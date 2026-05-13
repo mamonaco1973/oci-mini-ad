@@ -27,4 +27,8 @@ if [ -z "$PASSWORD" ] || [ "$PASSWORD" = "null" ]; then
   exit 1
 fi
 
-echo "$PASSWORD"
+DNS_ZONE=$(grep -A3 'variable "dns_zone"' 01-directory/variables.tf \
+  | grep default | sed 's/.*"\(.*\)".*/\1/')
+
+echo "Username : ${USER}@${DNS_ZONE}"
+echo "Password : ${PASSWORD}"
