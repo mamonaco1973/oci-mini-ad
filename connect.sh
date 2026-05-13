@@ -33,5 +33,19 @@ while true; do
   sleep 10
 done
 
-echo "DEBUG: ssh-metadata:"
-echo "$SESSION_DATA" | jq '.data["ssh-metadata"]'
+TUNNEL_CMD=$(echo "$SESSION_DATA" | jq -r '.data["ssh-metadata"].command' \
+  | sed "s|<privateKey>|${KEY}|g" \
+  | sed "s|<localPort>|${LOCAL_PORT}|g")
+
+echo "Opening tunnel..."
+eval "$TUNNEL_CMD -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" &
+TUNNEL_PID=$!
+sleep 3
+
+ssh -i "$KEY" \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  -p "$LOCAL_PORT" \
+  ubuntu@localhost
+
+kill "$TUNNEL_PID" 2>/dev/null || true
