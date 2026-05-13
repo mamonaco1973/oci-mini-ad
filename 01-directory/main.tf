@@ -1,14 +1,32 @@
 # ==============================================================================
-# AWS Provider Configuration
-# ------------------------------------------------------------------------------
-# Purpose:
-#   - Configures the AWS provider for all resources in this Terraform stack.
-#
-# Notes:
-#   - The region is hard-coded for simplicity in this quick-start project.
-#   - Update this value or parameterize it for multi-region deployments.
+# Provider and Terraform Configuration
 # ==============================================================================
 
-provider "aws" {
-  region = "us-east-1"
+terraform {
+  required_providers {
+    oci = {
+      source  = "oracle/oci"
+      version = "~> 6.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.0"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
+    }
+  }
+}
+
+provider "oci" {
+  region = "us-ashburn-1"
 }

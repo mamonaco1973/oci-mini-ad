@@ -1,47 +1,39 @@
 # ==============================================================================
-# EC2 Instance: Windows AD Test Host
+# OCI Compute Instance: Windows AD Client
 # ------------------------------------------------------------------------------
 # Purpose:
-#   - Deploys a Windows Server EC2 instance joined to the mini-AD domain.
-#
-# Scope:
-#   - Uses a dynamically resolved Windows Server 2022 AMI.
-#   - Launched into a public subnet for initial access and testing.
-#   - Bootstrapped via PowerShell user-data for AD integration.
-#
-# Notes:
-#   - Windows instances require more CPU and memory than Linux.
-#   - Public IP exposure is intended for lab use only.
+#   - Deploys a Windows Server 2022 instance joined to the mini-AD domain.
+#   - Bootstrapped via cloudbase-init PowerShell user_data.
+#   - Launched into the public subnet for RDP access.
 # ==============================================================================
 
-resource "aws_instance" "windows_ad_instance" {
-  # AMI selection
-  ami = data.aws_ami.windows_ami.id
+resource "oci_core_instance" "windows_ad_instance" {
+  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
+  compartment_id      = local.compartment_ocid
+  shape               = "VM.Standard.E4.Flex"
+  display_name        = "windows-ad-instance"
 
-  # Instance sizing
-  instance_type = "t2.medium"
+  shape_config {
+    ocpus         = 2
+    memory_in_gbs = 16
+  }
 
-  # Networking
-  subnet_id                   = data.aws_subnet.vm_subnet_1.id
-  associate_public_ip_address = true
+  source_details {
+    source_type = "image"
+    source_id   = data.oci_core_images.windows.images[0].id
+  }
 
-  # Security groups
-  vpc_security_group_ids = [
-    aws_security_group.ad_rdp_sg.id,
-    aws_security_group.ad_ssm_sg.id
-  ]
+  create_vnic_details {
+    subnet_id        = local.vm_subnet_ocid
+    assign_public_ip = true
+    nsg_ids          = [oci_core_network_security_group.rdp_nsg.id]
+  }
 
-  # IAM role for AWS API access (Secrets Manager, SSM, etc.)
-  iam_instance_profile = aws_iam_instance_profile.ec2_secrets_profile.name
-
-  # User-data bootstrap (PowerShell)
-  user_data = templatefile("./scripts/userdata.ps1", {
-    admin_secret = "admin_ad_credentials"
-    domain_fqdn  = var.dns_zone
-  })
-
-  # Resource tags
-  tags = {
-    Name = "windows-ad-instance"
+  metadata = {
+    user_data = base64encode(templatefile("./scripts/userdata.ps1", {
+      admin_password = local.admin_password
+      domain_fqdn    = var.dns_zone
+      netbios        = var.netbios
+    }))
   }
 }

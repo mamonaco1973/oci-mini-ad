@@ -1,46 +1,30 @@
 #!/bin/bash
 # ==============================================================================
-# destroy.sh - Mini-AD Infrastructure Teardown
+# destroy.sh - Mini-AD Infrastructure Teardown (OCI)
 # ------------------------------------------------------------------------------
 # Purpose:
-#   - Destroys the mini-AD environment in a controlled, two-phase order:
-#       1. Application / server EC2 instances.
-#       2. Active Directory resources and supporting secrets.
-#
-# Scope:
-#   - Runs Terraform destroy for dependent servers first.
-#   - Force-deletes Secrets Manager entries created for AD users.
-#   - Tears down the AD Terraform stack last.
-#
-# Fast-Fail Behavior:
-#   - Script exits immediately on command failure, unset variables,
-#     or failed pipelines.
+#   - Destroys the mini-AD environment in controlled order:
+#       1. Client compute instances (02-servers).
+#       2. Active Directory resources and networking (01-directory).
 #
 # WARNING:
-#   - Secrets are deleted with NO recovery window.
 #   - This action is destructive and irreversible.
-#
-# Requirements:
-#   - AWS CLI installed and authenticated with delete permissions.
-#   - Terraform installed and available in PATH.
 # ==============================================================================
 
 set -euo pipefail
 
-# ------------------------------------------------------------------------------
-# Configuration
-# ------------------------------------------------------------------------------
-export AWS_DEFAULT_REGION="us-east-1"
+# Resolve compartment — fall back to tenancy OCID if OCI_COMPARTMENT_ID is unset
+if [ -z "${OCI_COMPARTMENT_ID:-}" ]; then
+  OCI_COMPARTMENT_ID=$(awk -F'=' '/^tenancy[[:space:]]*=/{gsub(/[[:space:]]/, "", $2); print $2; exit}' ~/.oci/config)
+fi
+export TF_VAR_compartment_ocid="$OCI_COMPARTMENT_ID"
 
 # ------------------------------------------------------------------------------
-# Phase 1: Destroy Server EC2 Instances
+# Phase 1: Destroy Client Instances
 # ------------------------------------------------------------------------------
-echo "NOTE: Destroying EC2 server instances..."
+echo "NOTE: Destroying OCI client compute instances..."
 
-cd 02-servers || {
-  echo "ERROR: Directory 02-servers not found"
-  exit 1
-}
+cd 02-servers || { echo "ERROR: Directory 02-servers not found"; exit 1; }
 
 terraform init
 terraform destroy -auto-approve
@@ -48,46 +32,15 @@ terraform destroy -auto-approve
 cd ..
 
 # ------------------------------------------------------------------------------
-# Phase 2: Destroy AD Secrets and Directory Resources
+# Phase 2: Destroy Active Directory Infrastructure
 # ------------------------------------------------------------------------------
-echo "NOTE: Deleting Active Directory Secrets Manager entries..."
+echo "NOTE: Destroying Active Directory resources and networking..."
 
-aws secretsmanager delete-secret \
-  --secret-id "akumar_ad_credentials" \
-  --force-delete-without-recovery
-
-aws secretsmanager delete-secret \
-  --secret-id "jsmith_ad_credentials" \
-  --force-delete-without-recovery
-
-aws secretsmanager delete-secret \
-  --secret-id "edavis_ad_credentials" \
-  --force-delete-without-recovery
-
-aws secretsmanager delete-secret \
-  --secret-id "rpatel_ad_credentials" \
-  --force-delete-without-recovery
-
-aws secretsmanager delete-secret \
-  --secret-id "admin_ad_credentials" \
-  --force-delete-without-recovery
-
-# ------------------------------------------------------------------------------
-# Phase 3: Destroy Active Directory Infrastructure
-# ------------------------------------------------------------------------------
-echo "NOTE: Destroying Active Directory resources..."
-
-cd 01-directory || {
-  echo "ERROR: Directory 01-directory not found"
-  exit 1
-}
+cd 01-directory || { echo "ERROR: Directory 01-directory not found"; exit 1; }
 
 terraform init
 terraform destroy -auto-approve
 
 cd ..
 
-# ------------------------------------------------------------------------------
-# Completion
-# ------------------------------------------------------------------------------
 echo "NOTE: Infrastructure destruction complete."

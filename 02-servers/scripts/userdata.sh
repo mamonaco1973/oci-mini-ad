@@ -10,45 +10,41 @@ trap 'echo "ERROR at line $LINENO"; exit 1' ERR
 
 echo "user-data start: $(date -Is)"
 
-# Inputs (Terraform-injected)
-ADMIN_SECRET="${admin_secret}"
+# Inputs injected by Terraform via templatefile
+ADMIN_PASSWORD="${admin_password}"
+ADMIN_USERNAME="Admin"
 DOMAIN_FQDN="${domain_fqdn}"
 
-# SSM agent (snap)
-snap install amazon-ssm-agent --classic
-systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service
-
 # Packages
+# Rewrite apt sources — avoids ubuntu.com DDoS issues on OCI
+sed -i 's|http://archive.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+sed -i 's|http://security.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y \
-  less unzip curl jq \
+  less curl jq \
   realmd sssd-ad sssd-tools libnss-sss libpam-sss \
   adcli samba-common-bin samba-libs \
   oddjob oddjob-mkhomedir packagekit krb5-user \
   nano vim
 
-# AWS CLI v2
-cd /tmp
-curl -s https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
-unzip -q awscliv2.zip
-./aws/install --update
-rm -rf awscliv2.zip aws
+# Wait for DC to be reachable via DNS — OCI cloud-init fires before DNS propagates
+for i in {1..60}; do
+  if host "$DOMAIN_FQDN" >/dev/null 2>&1; then
+    echo "DNS resolved $DOMAIN_FQDN after $((i*5))s"
+    break
+  fi
+  echo "waiting for DNS ($i/60)..."
+  sleep 5
+done
 
-# Join AD (pull creds from Secrets Manager)
-SECRET_JSON="$(aws secretsmanager get-secret-value \
-  --secret-id "$ADMIN_SECRET" \
-  --query SecretString \
-  --output text)"
-
-ADMIN_PASSWORD="$(echo "$SECRET_JSON" | jq -r '.password')"
-ADMIN_USERNAME="$(echo "$SECRET_JSON" | jq -r '.username' | sed 's/.*\\//')"
-
+# Join AD domain using Admin credentials from Terraform
 echo "Joining domain $DOMAIN_FQDN as $ADMIN_USERNAME"
 echo "$ADMIN_PASSWORD" | realm join -U "$ADMIN_USERNAME" "$DOMAIN_FQDN" --verbose \
   >> /root/join.log 2>&1
 
-# SSH: allow password auth (cloud image file may not exist on all distros)
+# SSH: allow password authentication for AD users
 if [ -f /etc/ssh/sshd_config.d/60-cloudimg-settings.conf ]; then
   sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' \
     /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
@@ -56,7 +52,7 @@ else
   sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/g' /etc/ssh/sshd_config || true
 fi
 
-# SSSD tweaks (only if file exists)
+# SSSD tweaks
 if [ -f /etc/sssd/sssd.conf ]; then
   sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/g' /etc/sssd/sssd.conf || true
   sed -i 's/ldap_id_mapping = True/ldap_id_mapping = False/g' /etc/sssd/sssd.conf || true
@@ -80,6 +76,5 @@ if [ ! -f "$SUDO_FILE" ]; then
   chmod 440 "$SUDO_FILE"
 fi
 
-# Quick status
 realm list || true
 echo "user-data complete: $(date -Is)"

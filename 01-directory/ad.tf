@@ -2,59 +2,44 @@
 # Mini Active Directory (mini-ad) - Module Invocation
 # ------------------------------------------------------------------------------
 # Purpose:
-#   - Invokes the reusable "mini-ad" module to deploy a lightweight Samba 4 AD
-#     domain controller on Ubuntu.
-#
-# Scope:
-#   - Supplies domain identity (NETBIOS, realm, DNS zone) and networking inputs
-#     (VPC + subnet placement).
-#   - Passes an AD admin password and a rendered JSON payload used to create
-#     demo users during bootstrap.
+#   - Invokes the reusable OCI mini-ad module to deploy a Samba 4 AD DC.
 #
 # Notes:
-#   - The instance bootstrap may require outbound internet access for package
-#     installation. Ensure NAT + route associations exist before provisioning.
+#   - Ensure NAT gateway and route table associations exist before provisioning
+#     (depends_on) — the DC bootstrap needs outbound internet for apt packages.
 # ==============================================================================
 
 module "mini_ad" {
-  # GitHub repo source for the reusable module.
-  source = "github.com/mamonaco1973/module-aws-mini-ad"
+  source = "github.com/mamonaco1973/module-oci-mini-ad"
 
-  # Domain identity inputs.
-  netbios = var.netbios
-  realm   = var.realm
-  dns_zone = var.dns_zone
+  compartment_id = var.compartment_ocid
 
-  # Directory structure inputs.
+  # Domain identity
+  netbios      = var.netbios
+  realm        = var.realm
+  dns_zone     = var.dns_zone
   user_base_dn = var.user_base_dn
   users_json   = local.users_json
 
-  # Authentication inputs.
+  # Authentication
   ad_admin_password = random_password.admin_password.result
 
-  # Networking placement inputs.
-  vpc_id    = aws_vpc.ad-vpc.id
-  subnet_id = aws_subnet.ad-subnet.id
+  # Networking — DC placed in private subnet; module updates VCN default DHCP
+  vcn_id                      = oci_core_vcn.ad_vcn.id
+  vcn_default_dhcp_options_id = oci_core_vcn.ad_vcn.default_dhcp_options_id
+  subnet_ocid                 = oci_core_subnet.ad_subnet.id
 
-  # Ensure NAT + route association exist before instance bootstrap.
+  # SSH key for management access
+  ssh_public_key = tls_private_key.ssh.public_key_openssh
+
   depends_on = [
-    aws_nat_gateway.ad_nat,
-    aws_route_table_association.rt_assoc_ad_private
+    oci_core_nat_gateway.ad_nat,
+    oci_core_route_table.private_rt,
   ]
 }
 
 # ==============================================================================
-# Local Variable: users_json
-# ------------------------------------------------------------------------------
-# Purpose:
-#   - Renders ./scripts/users.json.template into a single JSON blob.
-#
-# Scope:
-#   - Injects domain naming inputs and per-user random passwords.
-#   - The module consumes this blob during bootstrap to create demo accounts.
-#
-# Notes:
-#   - Keep the template stable and let Terraform populate runtime values.
+# Seed user JSON — injected into the DC bootstrap to create demo accounts
 # ==============================================================================
 
 locals {
@@ -69,4 +54,34 @@ locals {
     rpatel_password = random_password.rpatel_password.result
     akumar_password = random_password.akumar_password.result
   })
+}
+
+# ==============================================================================
+# Outputs consumed by 02-servers via terraform_remote_state
+# ==============================================================================
+
+output "compartment_ocid" {
+  description = "Compartment OCID for 02-servers to provision into."
+  value       = var.compartment_ocid
+}
+
+output "vcn_id" {
+  description = "VCN OCID for NSG and subnet lookups in 02-servers."
+  value       = oci_core_vcn.ad_vcn.id
+}
+
+output "vm_subnet_ocid" {
+  description = "OCID of vm-subnet-1 for client instance placement."
+  value       = oci_core_subnet.vm_subnet_1.id
+}
+
+output "admin_password" {
+  description = "AD admin password for domain join in 02-servers userdata."
+  value       = random_password.admin_password.result
+  sensitive   = true
+}
+
+output "ssh_public_key" {
+  description = "SSH public key for authorizing on client instances."
+  value       = tls_private_key.ssh.public_key_openssh
 }

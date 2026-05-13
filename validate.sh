@@ -1,49 +1,23 @@
 #!/bin/bash
 # ==============================================================================
-# validate.sh - Mini-AD Quick Start Validation
+# validate.sh - Mini-AD Quick Start Validation (OCI)
 # ------------------------------------------------------------------------------
 # Purpose:
-#   - Queries AWS for expected EC2 instances and prints quick-start endpoints.
-#
-# Scope:
-#   - Looks up instances by Name tag:
-#       - windows-ad-instance
-#       - linux-ad-instance
-#   - Prints public DNS names for fast copy/paste access.
-#
-# Fast-Fail Behavior:
-#   - Script exits immediately on command failure, unset variables,
-#     or failed pipelines.
-#
-# Requirements:
-#   - AWS CLI installed and authenticated.
-#   - Instances must be tagged with the expected Name values.
+#   - Reads OCI compute instance public IPs from Terraform state outputs.
+#   - Prints connection endpoints for RDP and SSH access.
 # ==============================================================================
 
 set -euo pipefail
 
 # ------------------------------------------------------------------------------
-# Configuration
+# Pull public IPs from Terraform state
 # ------------------------------------------------------------------------------
-export AWS_DEFAULT_REGION="us-east-1"
+cd 02-servers
 
-# ------------------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------------------
-get_public_dns_by_name_tag() {
-  local name_tag="$1"
+linux_ip=$(terraform output -raw linux_public_ip 2>/dev/null || echo "")
+windows_ip=$(terraform output -raw windows_public_ip 2>/dev/null || echo "")
 
-  aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=${name_tag}" \
-    --query "Reservations[].Instances[].PublicDnsName" \
-    --output text | xargs
-}
-
-# ------------------------------------------------------------------------------
-# Lookups
-# ------------------------------------------------------------------------------
-windows_dns="$(get_public_dns_by_name_tag "windows-ad-instance")"
-linux_dns="$(get_public_dns_by_name_tag "linux-ad-instance")"
+cd ..
 
 # ------------------------------------------------------------------------------
 # Quick Start Output
@@ -54,16 +28,17 @@ echo "Mini-AD Quick Start - Validation Output"
 echo "============================================================================"
 echo ""
 
-if [ -n "${windows_dns}" ] && [ "${windows_dns}" != "None" ]; then
-  echo "NOTE: Windows RDP Host FQDN: ${windows_dns}"
+if [ -n "${linux_ip}" ]; then
+  echo "NOTE: Linux SSH Host:    ${linux_ip}"
+  echo "      SSH command:       ssh -i 01-directory/keys/Private_Key ubuntu@${linux_ip}"
 else
-  echo "WARN: windows-ad-instance not found or has no public DNS"
+  echo "WARN: linux-ad-instance public IP not found"
 fi
 
-if [ -n "${linux_dns}" ] && [ "${linux_dns}" != "None" ]; then
-  echo "NOTE: Linux SSH Host FQDN:  ${linux_dns}"
+if [ -n "${windows_ip}" ]; then
+  echo "NOTE: Windows RDP Host:  ${windows_ip}"
 else
-  echo "WARN: linux-ad-instance not found or has no public DNS"
+  echo "WARN: windows-ad-instance public IP not found"
 fi
 
 echo ""

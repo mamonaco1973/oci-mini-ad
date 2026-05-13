@@ -1,81 +1,40 @@
 # ==============================================================================
-# Ubuntu 24.04 AMI Resolution (Canonical)
+# OCI Compute Instance: Linux AD Client
 # ------------------------------------------------------------------------------
 # Purpose:
-#   - Fetches the current stable Ubuntu 24.04 LTS AMI ID from AWS SSM.
-#
-# Notes:
-#   - The SSM path is maintained by Canonical and always points to the latest
-#     stable amd64 HVM AMI using gp3-backed EBS.
+#   - Deploys an Ubuntu 24.04 instance for AD integration and testing.
+#   - Joined to the Samba domain via realm join using admin credentials.
+#   - Launched into the public subnet with a public IP for SSH access.
 # ==============================================================================
 
-data "aws_ssm_parameter" "ubuntu_24_04" {
-  name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
-}
+resource "oci_core_instance" "linux_ad_instance" {
+  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
+  compartment_id      = local.compartment_ocid
+  shape               = "VM.Standard.E4.Flex"
+  display_name        = "linux-ad-instance"
 
-# ==============================================================================
-# Canonical Ubuntu AMI Lookup
-# ------------------------------------------------------------------------------
-# Purpose:
-#   - Resolves the full AMI object using the ID returned from SSM.
-#
-# Scope:
-#   - Restricts ownership to Canonical to avoid spoofed or third-party images.
-#   - Filters explicitly by image-id for deterministic resolution.
-#
-# Notes:
-#   - most_recent is retained as a defensive guard when multiple matches exist.
-# ==============================================================================
-
-data "aws_ami" "ubuntu_ami" {
-  most_recent = true
-  owners      = ["099720109477"]
-
-  filter {
-    name   = "image-id"
-    values = [data.aws_ssm_parameter.ubuntu_24_04.value]
+  shape_config {
+    ocpus         = 1
+    memory_in_gbs = 4
   }
-}
 
-# ==============================================================================
-# EC2 Instance: Linux AD Utility / Join Host
-# ------------------------------------------------------------------------------
-# Purpose:
-#   - Deploys a Linux EC2 instance used for AD integration and testing.
-#
-# Scope:
-#   - Launched into a public subnet for initial access and troubleshooting.
-#   - Bootstrapped via user-data for AD-related configuration.
-#
-# Notes:
-#   - IAM role access is preferred over static credentials.
-# ==============================================================================
+  source_details {
+    source_type = "image"
+    source_id   = data.oci_core_images.ubuntu.images[0].id
+  }
 
-resource "aws_instance" "linux_ad_instance" {
-  ami           = data.aws_ami.ubuntu_ami.id
-  instance_type = "t2.micro"
+  create_vnic_details {
+    subnet_id        = local.vm_subnet_ocid
+    assign_public_ip = true
+    nsg_ids          = [oci_core_network_security_group.ssh_nsg.id]
+  }
 
-  # Networking
-  subnet_id                   = data.aws_subnet.vm_subnet_1.id
-  associate_public_ip_address = true
-
-  # Security groups
-  vpc_security_group_ids = [
-    aws_security_group.ad_ssh_sg.id,
-    aws_security_group.ad_ssm_sg.id
-  ]
-
-  # IAM role for AWS API access (Secrets Manager, SSM, etc.)
-  iam_instance_profile = aws_iam_instance_profile.ec2_secrets_profile.name
-
-  # User data bootstrap
-  user_data = templatefile("./scripts/userdata.sh", {
-    admin_secret = "admin_ad_credentials"
-    domain_fqdn  = "mcloud.mikecloud.com"
-  })
-
-  # Resource tags
-  tags = {
-    Name = "linux-ad-instance"
+  metadata = {
+    ssh_authorized_keys = local.ssh_public_key
+    user_data = base64encode(templatefile("./scripts/userdata.sh", {
+      admin_password = local.admin_password
+      domain_fqdn    = var.dns_zone
+      netbios        = var.netbios
+    }))
   }
 }
