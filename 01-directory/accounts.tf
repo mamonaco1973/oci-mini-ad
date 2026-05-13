@@ -14,6 +14,12 @@ resource "local_file" "private_key" {
   file_permission = "0600"
 }
 
+resource "local_file" "public_key" {
+  content         = tls_private_key.ssh.public_key_openssh
+  filename        = "./keys/Private_Key.pub"
+  file_permission = "0644"
+}
+
 # ==============================================================================
 # AD Account Passwords
 # Passwords are generated here and passed to the DC via the module's user_data.

@@ -85,3 +85,13 @@ output "ssh_public_key" {
   description = "SSH public key for authorizing on client instances."
   value       = tls_private_key.ssh.public_key_openssh
 }
+
+output "dc_private_ip" {
+  description = "Private IP of the AD DC — used as the bastion session target."
+  value       = module.mini_ad.dns_server
+}
+
+output "bastion_id" {
+  description = "OCID of the OCI Bastion for creating SSH sessions."
+  value       = oci_bastion_bastion.ad_bastion.id
+}
