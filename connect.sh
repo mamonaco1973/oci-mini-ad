@@ -3,27 +3,35 @@ set -uo pipefail
 
 REGION="us-ashburn-1"
 KEY="01-directory/keys/Private_Key"
+LOCAL_PORT=2222
 
 BASTION_ID=$(cd 01-directory && terraform output -raw bastion_id)
 DC_IP=$(cd 01-directory && terraform output -raw dc_private_ip)
 TARGET_IP="${1:-$DC_IP}"
 
-echo "DEBUG: Target IP  : $TARGET_IP"
-echo "DEBUG: Bastion ID : $BASTION_ID"
+echo "Target: $TARGET_IP"
+echo "Creating bastion session..."
 
 TARGET_DETAILS="{\"targetResourcePrivateIpAddress\": \"${TARGET_IP}\", \"targetResourcePort\": 22, \"sessionType\": \"PORT_FORWARDING\"}"
 
-echo "DEBUG: target-resource-details: $TARGET_DETAILS"
-echo "DEBUG: Running oci bastion session create..."
-
-RAW_OUTPUT=$(oci bastion session create \
+SESSION_JSON=$(oci bastion session create \
   --bastion-id "$BASTION_ID" \
   --target-resource-details "$TARGET_DETAILS" \
   --key-type PUB \
   --ssh-public-key-file "${KEY}.pub" \
-  --session-ttl-in-seconds 10800 2>&1) || true
+  --session-ttl-in-seconds 10800)
 
-echo "DEBUG: Exit code: $?"
-echo "DEBUG: Raw output:"
-echo "$RAW_OUTPUT"
-echo "DEBUG: --- end raw output ---"
+SESSION_ID=$(echo "$SESSION_JSON" | jq -r '.data.id')
+echo "Session: $SESSION_ID"
+echo "Waiting for ACTIVE..."
+
+while true; do
+  SESSION_DATA=$(oci bastion session get --session-id "$SESSION_ID")
+  STATE=$(echo "$SESSION_DATA" | jq -r '.data["lifecycle-state"]')
+  echo "  $STATE"
+  [ "$STATE" = "ACTIVE" ] && break
+  sleep 10
+done
+
+echo "DEBUG: ssh-metadata:"
+echo "$SESSION_DATA" | jq '.data["ssh-metadata"]'
