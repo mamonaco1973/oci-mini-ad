@@ -1,13 +1,4 @@
 #!/bin/bash
-# ==============================================================================
-# get_password.sh - Retrieve AD account password from Terraform state
-# ------------------------------------------------------------------------------
-# Usage:
-#   ./get_password.sh <user>
-#
-# Valid users: admin, jsmith, edavis, rpatel, akumar
-# ==============================================================================
-
 set -euo pipefail
 
 if [ $# -ne 1 ]; then
@@ -17,19 +8,23 @@ if [ $# -ne 1 ]; then
 fi
 
 USER="$1"
+TFSTATE="01-directory/terraform.tfstate"
 
-valid_users=("admin" "jsmith" "edavis" "rpatel" "akumar")
-found=false
-for u in "${valid_users[@]}"; do
-  [ "$u" = "$USER" ] && found=true && break
-done
+if [ ! -f "$TFSTATE" ]; then
+  echo "ERROR: $TFSTATE not found — has 01-directory been applied?"
+  exit 1
+fi
 
-if [ "$found" = false ]; then
-  echo "ERROR: Unknown user '$USER'"
+PASSWORD=$(jq -r --arg name "${USER}_password" '
+  .resources[]
+  | select(.type == "random_password" and .name == $name)
+  | .instances[0].attributes.result
+' "$TFSTATE")
+
+if [ -z "$PASSWORD" ] || [ "$PASSWORD" = "null" ]; then
+  echo "ERROR: No password found for user '$USER'"
   echo "Valid users: admin, jsmith, edavis, rpatel, akumar"
   exit 1
 fi
 
-cd 01-directory
-terraform output -raw "${USER}_password"
-echo ""
+echo "$PASSWORD"
