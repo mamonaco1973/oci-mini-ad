@@ -23,9 +23,9 @@ echo "NOTE: Target IP  : $TARGET_IP"
 echo "NOTE: Bastion ID : $BASTION_ID"
 
 # ------------------------------------------------------------------------------
-# Create port-forwarding session and wait for ACTIVE
+# Create port-forwarding session
 # ------------------------------------------------------------------------------
-echo "NOTE: Creating bastion session (waiting for ACTIVE)..."
+echo "NOTE: Creating bastion session..."
 
 PUB_KEY_CONTENT=$(cat "${KEY}.pub")
 
@@ -35,16 +35,27 @@ SESSION_OCID=$(oci bastion session create-port-forwarding \
   --target-port 22 \
   --key-details "{\"publicKeyContent\": \"${PUB_KEY_CONTENT}\"}" \
   --session-ttl-in-seconds 10800 \
-  --wait-for-state ACTIVE \
-  --max-wait-seconds 120 \
-  2>&1 | jq -r '.data.id')
+  | jq -r '.data.id')
 
 if [ -z "$SESSION_OCID" ] || [ "$SESSION_OCID" = "null" ]; then
-  echo "ERROR: Failed to create bastion session or retrieve session OCID."
+  echo "ERROR: Failed to create bastion session."
   exit 1
 fi
 
 echo "NOTE: Session ID : $SESSION_OCID"
+
+# ------------------------------------------------------------------------------
+# Poll until ACTIVE
+# ------------------------------------------------------------------------------
+echo "NOTE: Waiting for session to become ACTIVE..."
+
+until [ "$(oci bastion session get \
+  --session-id "$SESSION_OCID" \
+  | jq -r '.data."lifecycle-state"')" = "ACTIVE" ]; do
+  echo "NOTE: Not ready yet, retrying in 5s..."
+  sleep 5
+done
+
 echo "NOTE: Connecting to $TARGET_IP..."
 
 # ------------------------------------------------------------------------------
