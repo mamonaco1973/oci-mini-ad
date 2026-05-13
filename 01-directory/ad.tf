@@ -81,6 +81,26 @@ output "admin_password" {
   sensitive   = true
 }
 
+output "jsmith_password" {
+  value     = random_password.jsmith_password.result
+  sensitive = true
+}
+
+output "edavis_password" {
+  value     = random_password.edavis_password.result
+  sensitive = true
+}
+
+output "rpatel_password" {
+  value     = random_password.rpatel_password.result
+  sensitive = true
+}
+
+output "akumar_password" {
+  value     = random_password.akumar_password.result
+  sensitive = true
+}
+
 output "ssh_public_key" {
   description = "SSH public key for authorizing on client instances."
   value       = tls_private_key.ssh.public_key_openssh
