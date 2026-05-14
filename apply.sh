@@ -50,4 +50,4 @@ terraform apply -auto-approve
 
 cd ..
 
-echo "NOTE: Deployment complete."
+./validate.sh
