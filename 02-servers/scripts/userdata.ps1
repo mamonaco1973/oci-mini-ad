@@ -10,6 +10,13 @@ Start-Transcript -Path $Log -Append -Force
 try {
     Write-Output "Starting PowerShell user-data at $(Get-Date -Format o)"
 
+    Write-Output "Disabling IPv6 — OCI subnets are IPv4-only"
+    Get-NetAdapterBinding -ComponentID ms_tcpip6 | Disable-NetAdapterBinding
+
+    Write-Output "Disabling Windows Update — prevents download contention during provisioning"
+    Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
+    Set-Service wuauserv -StartupType Disabled
+
     Write-Output "Installing AD management Windows features"
     Install-WindowsFeature -Name GPMC,RSAT-AD-PowerShell,RSAT-AD-AdminCenter,RSAT-ADDS-Tools,RSAT-DNS-Server
     Write-Output "AD management feature install complete"
