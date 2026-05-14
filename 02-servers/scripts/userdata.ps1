@@ -14,6 +14,21 @@ try {
     Install-WindowsFeature -Name GPMC,RSAT-AD-PowerShell,RSAT-AD-AdminCenter,RSAT-ADDS-Tools,RSAT-DNS-Server
     Write-Output "AD management feature install complete"
 
+    Write-Output "Waiting for DNS to resolve ${domain_fqdn}..."
+    $dnsReady = $false
+    for ($i = 1; $i -le 20; $i++) {
+        try {
+            Resolve-DnsName "${domain_fqdn}" -ErrorAction Stop | Out-Null
+            Write-Output "DNS ready after $($i * 30)s"
+            $dnsReady = $true
+            break
+        } catch {
+            Write-Output "DNS not ready ($i/20), retrying in 30s..."
+            Start-Sleep -Seconds 30
+        }
+    }
+    if (-not $dnsReady) { throw "DNS did not resolve ${domain_fqdn} after 10 minutes" }
+
     Write-Output "Building domain join credential from injected values"
     $adminUsername = "${netbios}\Admin"
     $adminPassword = "${admin_password}" | ConvertTo-SecureString -AsPlainText -Force
