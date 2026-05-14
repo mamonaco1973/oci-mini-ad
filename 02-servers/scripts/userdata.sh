@@ -66,7 +66,7 @@ apt-get install -y \
 # Wait for DC Kerberos — DNS resolving the domain is not enough; the full AD
 # stack (Kerberos, LDAP) takes longer after the DC reboots post-provision.
 echo "Waiting for DC Kerberos on $DOMAIN_FQDN..."
-until echo "$ADMIN_PASSWORD" | kinit "$ADMIN_USERNAME@${domain_fqdn^^}" 2>/dev/null; do
+until echo "$ADMIN_PASSWORD" | kinit "$ADMIN_USERNAME@${domain_fqdn_upper}" 2>/dev/null; do
   echo "Kerberos not ready yet, retrying in 30s..."
   sleep 30
 done

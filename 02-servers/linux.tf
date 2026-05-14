@@ -32,10 +32,11 @@ resource "oci_core_instance" "linux_ad_instance" {
   metadata = {
     ssh_authorized_keys = local.ssh_public_key
     user_data = base64encode(templatefile("./scripts/userdata.sh", {
-      admin_password = local.admin_password
-      domain_fqdn    = var.dns_zone
-      netbios        = var.netbios
-      dc_ip          = local.dc_private_ip
+      admin_password    = local.admin_password
+      domain_fqdn       = var.dns_zone
+      domain_fqdn_upper = upper(var.dns_zone)
+      netbios           = var.netbios
+      dc_ip             = local.dc_private_ip
     }))
   }
 }
