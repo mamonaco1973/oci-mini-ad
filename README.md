@@ -18,7 +18,7 @@ While the mini-AD deployment provides a functional and cost-effective Active Dir
 - **GPO Replication** — Samba GPO support is limited; no automatic replication.
 - **PowerShell AD Cmdlets** — Samba lacks native AD Web Services; many cmdlets do not work.
 - **Production Security Hardening** — Security posture depends entirely on your configuration.
-- **Passwords in Terraform State** — Credentials are stored in tfstate; no OCI Vault integration.
+- **Vault Pending Deletion** — On destroy, OCI schedules the vault for deletion (minimum 7 days). A redeploy with the same name will fail until OCI removes the pending vault.
 
 ---
 
@@ -73,6 +73,11 @@ When the deployment completes, the following resources are created:
 - Private subnet placement — no public IP
 - VCN DHCP options updated to point DNS at the DC after provisioning
 
+**Secrets:**
+- OCI Vault (DEFAULT type) with an AES-256 master key
+- All AD account passwords stored as named secrets (`mini-ad-<user>`)
+- Retrieved via `./get_password.sh` using the OCI CLI — passwords are not stored in tfstate
+
 **Bastion:**
 - OCI Bastion Service (STANDARD, free) for SSH access to the private DC
 
@@ -119,6 +124,8 @@ The DC has no public IP. Use `connect.sh` to create an OCI Bastion port-forwardi
 
 ## Retrieving Passwords
 
+Passwords are stored in OCI Vault and retrieved via the OCI CLI:
+
 ```bash
 ./get_password.sh admin
 ./get_password.sh jsmith
@@ -132,6 +139,8 @@ Output:
 Username : jsmith@mcloud.mikecloud.com
 Password : <generated-password>
 ```
+
+Secrets are named `mini-ad-<user>` in the vault and can also be viewed directly in the OCI Console under **Security → Vault**.
 
 ---
 

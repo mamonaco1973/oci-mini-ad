@@ -115,3 +115,8 @@ output "bastion_id" {
   description = "OCID of the OCI Bastion for creating SSH sessions."
   value       = oci_bastion_bastion.ad_bastion.id
 }
+
+output "vault_id" {
+  description = "OCID of the OCI Vault holding AD account secrets."
+  value       = oci_kms_vault.ad_vault.id
+}
