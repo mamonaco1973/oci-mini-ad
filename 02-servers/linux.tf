@@ -35,6 +35,7 @@ resource "oci_core_instance" "linux_ad_instance" {
       admin_password = local.admin_password
       domain_fqdn    = var.dns_zone
       netbios        = var.netbios
+      dc_ip          = local.dc_private_ip
     }))
   }
 }

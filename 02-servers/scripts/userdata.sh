@@ -29,6 +29,17 @@ ADMIN_PASSWORD="${admin_password}"
 ADMIN_USERNAME="Admin"
 DOMAIN_FQDN="${domain_fqdn}"
 
+# Disable systemd-resolved stub — pin resolv.conf to DC for AD DNS + fallback
+systemctl stop systemd-resolved || true
+systemctl disable systemd-resolved || true
+[ -L /etc/resolv.conf ] && rm -f /etc/resolv.conf
+cat > /etc/resolv.conf <<EOF
+search ${domain_fqdn}
+nameserver ${dc_ip}
+nameserver 8.8.8.8
+EOF
+chattr +i /etc/resolv.conf || true
+
 # Packages
 # Rewrite apt sources — avoids ubuntu.com DDoS issues on OCI
 sed -i 's|http://archive.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
