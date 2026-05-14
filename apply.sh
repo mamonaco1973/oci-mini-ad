@@ -38,4 +38,16 @@ terraform apply -auto-approve
 
 cd ..
 
-echo "NOTE: Phase 1 complete. SSH into the DC and verify before running 02-servers."
+# ------------------------------------------------------------------------------
+# Phase 2: Client Instances (Linux + Windows)
+# ------------------------------------------------------------------------------
+echo "NOTE: Deploying client instances..."
+
+cd 02-servers || { echo "ERROR: Directory 02-servers not found"; exit 1; }
+
+terraform init
+terraform apply -auto-approve
+
+cd ..
+
+echo "NOTE: Deployment complete."
