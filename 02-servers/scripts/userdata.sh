@@ -10,6 +10,20 @@ trap 'echo "ERROR at line $LINENO"; exit 1' ERR
 
 echo "user-data start: $(date -Is)"
 
+echo "Waiting for DNS resolution..."
+until nslookup us.archive.ubuntu.com >/dev/null 2>&1; do
+  echo "DNS not ready yet, retrying in 30s..."
+  sleep 30
+done
+echo "DNS ready: $(date -Is)"
+
+echo "Waiting for outbound internet connectivity..."
+until curl -fsS --max-time 10 https://us.archive.ubuntu.com/ >/dev/null 2>&1; do
+  echo "Internet not reachable yet, retrying in 30s..."
+  sleep 30
+done
+echo "Network ready: $(date -Is)"
+
 # Inputs injected by Terraform via templatefile
 ADMIN_PASSWORD="${admin_password}"
 ADMIN_USERNAME="Admin"
@@ -21,6 +35,8 @@ sed -i 's|http://archive.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/sou
 sed -i 's|http://security.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 
 export DEBIAN_FRONTEND=noninteractive
+# OCI NAT gateway does not route IPv6 — force IPv4 for all apt traffic
+echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 apt-get update -y
 apt-get install -y \
   less curl jq \
