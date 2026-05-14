@@ -12,13 +12,13 @@ echo "Target: $TARGET_IP"
 # Generate a temporary RSA key for the bastion tunnel.
 # OCI Bastion rejects ECDSA — temp RSA key avoids dependency on the
 # Terraform-managed key pair entirely.
-TMP_KEY=$(mktemp /tmp/bastion_key_XXXXXX)
-rm -f "$TMP_KEY"
+TMP_DIR=$(mktemp -d /tmp/bastion_XXXXXX)
+TMP_KEY="$TMP_DIR/key"
 ssh-keygen -t rsa -b 4096 -f "$TMP_KEY" -N "" -q
 chmod 600 "$TMP_KEY"
 
 cleanup() {
-  rm -f "$TMP_KEY" "${TMP_KEY}.pub"
+  rm -rf "$TMP_DIR"
   kill "$TUNNEL_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -52,7 +52,7 @@ TUNNEL_CMD=$(echo "$SESSION_DATA" | jq -r '.data["ssh-metadata"].command' \
 
 echo "Opening tunnel..."
 # Kill any stale tunnel from a previous run before binding the port
-fuser -k "${LOCAL_PORT}/tcp" 2>/dev/null || true
+fuser -k "${LOCAL_PORT}/tcp" >/dev/null 2>&1 || true
 sleep 1
 eval "$TUNNEL_CMD -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" &
 TUNNEL_PID=$!
