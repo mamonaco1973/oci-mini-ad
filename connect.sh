@@ -13,6 +13,7 @@ echo "Target: $TARGET_IP"
 # OCI Bastion rejects ECDSA — temp RSA key avoids dependency on the
 # Terraform-managed key pair entirely.
 TMP_KEY=$(mktemp /tmp/bastion_key_XXXXXX)
+rm -f "$TMP_KEY"
 ssh-keygen -t rsa -b 4096 -f "$TMP_KEY" -N "" -q
 chmod 600 "$TMP_KEY"
 
