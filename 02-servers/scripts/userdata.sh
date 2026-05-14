@@ -10,6 +10,14 @@ trap 'echo "ERROR at line $LINENO"; exit 1' ERR
 
 echo "user-data start: $(date -Is)"
 
+# Disable IPv6 — OCI subnets are IPv4-only; leaving IPv6 enabled causes glibc
+# to prefer AAAA records and waste time on unroutable connection attempts.
+sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+# Disable automatic updates — prevents apt lock contention during provisioning.
+systemctl disable --now apt-daily.service apt-daily-upgrade.service unattended-upgrades.service 2>/dev/null || true
+
 # OCI Ubuntu images block all inbound ports via iptables by default.
 # TODO: restrict source CIDR and open only required ports for production.
 iptables -I INPUT -s 0.0.0.0/0 -j ACCEPT
