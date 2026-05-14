@@ -54,6 +54,10 @@ try {
         }
     }
 
+    Write-Output "Enabling NLA so MSTSC prompts for credentials before session starts"
+    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
+      -Name "UserAuthentication" -Value 1
+
     Write-Output "Rebooting to finalize domain join and apply group policy"
     shutdown /r /t 5 /c "Initial OCI reboot to join domain" /f /d p:4:1
 }
