@@ -9,16 +9,6 @@ TARGET_IP="${1:-$DC_IP}"
 
 echo "Target: $TARGET_IP"
 
-# Retrieve ubuntu password from vault for the inner SSH connection
-VAULT_ID=$(cd 01-directory && terraform output -raw vault_id 2>/dev/null || echo "")
-UBUNTU_PASS=""
-if [ -n "$VAULT_ID" ]; then
-  UBUNTU_PASS=$(oci secrets secret-bundle get-secret-bundle-by-name \
-    --vault-id "$VAULT_ID" \
-    --secret-name "mini-ad-admin" 2>/dev/null \
-    | jq -r '.data."secret-bundle-content".content' | base64 -d || echo "")
-fi
-
 # Generate a temporary RSA key for the bastion tunnel.
 # OCI Bastion rejects ECDSA — temp RSA key avoids dependency on the
 # Terraform-managed key pair entirely.
@@ -60,17 +50,15 @@ TUNNEL_CMD=$(echo "$SESSION_DATA" | jq -r '.data["ssh-metadata"].command' \
   | sed "s|<localPort>|${LOCAL_PORT}|g")
 
 echo "Opening tunnel..."
+# Kill any stale tunnel from a previous run before binding the port
+fuser -k "${LOCAL_PORT}/tcp" 2>/dev/null || true
+sleep 1
 eval "$TUNNEL_CMD -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" &
 TUNNEL_PID=$!
 sleep 3
 
-if [ -n "$UBUNTU_PASS" ]; then
-  echo "Password: $UBUNTU_PASS"
-fi
-
 ssh -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
-  -o PasswordAuthentication=yes \
-  -o PubkeyAuthentication=no \
+  -i 01-directory/keys/Private_Key \
   -p "$LOCAL_PORT" \
   ubuntu@localhost
