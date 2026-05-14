@@ -2,6 +2,9 @@
 
 This project deploys a fully functional Active Directory environment on OCI in minutes using Terraform, Samba 4, and automated configuration scripts. It is designed as a low-cost alternative to managed directory services for labs, demos, and development environments.
 
+![diagram](oci-mini-directory.png)
+
+
 An Ubuntu-based OCI compute instance acts as both a Domain Controller and DNS server, integrated into a custom VCN with secure networking and OCI Bastion Service for private instance access. Windows and Linux instances are also deployed and automatically join the domain at boot, enabling seamless AD authentication across platforms.
 
 This solution is **not intended for production use**, but provides a complete, repeatable environment for testing AD-connected workloads on OCI.
