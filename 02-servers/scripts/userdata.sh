@@ -63,20 +63,30 @@ apt-get install -y \
   oddjob oddjob-mkhomedir packagekit krb5-user \
   nano vim iptables-persistent
 
-# Wait for DC to be reachable via DNS — OCI cloud-init fires before DNS propagates
-for i in {1..60}; do
-  if host "$DOMAIN_FQDN" >/dev/null 2>&1; then
-    echo "DNS resolved $DOMAIN_FQDN after $((i*5))s"
+# Wait for DC Kerberos — DNS resolving the domain is not enough; the full AD
+# stack (Kerberos, LDAP) takes longer after the DC reboots post-provision.
+echo "Waiting for DC Kerberos on $DOMAIN_FQDN..."
+until echo "$ADMIN_PASSWORD" | kinit "$ADMIN_USERNAME@${domain_fqdn^^}" 2>/dev/null; do
+  echo "Kerberos not ready yet, retrying in 30s..."
+  sleep 30
+done
+kdestroy 2>/dev/null || true
+echo "DC Kerberos ready: $(date -Is)"
+
+# Join AD domain — retry loop in case LDAP/SMB are still initialising
+echo "Joining domain $DOMAIN_FQDN as $ADMIN_USERNAME"
+for i in {1..10}; do
+  if echo "$ADMIN_PASSWORD" | realm join -U "$ADMIN_USERNAME" "$DOMAIN_FQDN"; then
+    echo "Domain join succeeded on attempt $i"
     break
   fi
-  echo "waiting for DNS ($i/60)..."
-  sleep 5
+  if [ "$i" -eq 10 ]; then
+    echo "ERROR: domain join failed after 10 attempts"
+    exit 1
+  fi
+  echo "Domain join failed (attempt $i/10), retrying in 30s..."
+  sleep 30
 done
-
-# Join AD domain using Admin credentials from Terraform
-echo "Joining domain $DOMAIN_FQDN as $ADMIN_USERNAME"
-echo "$ADMIN_PASSWORD" | realm join -U "$ADMIN_USERNAME" "$DOMAIN_FQDN" --verbose \
-  >> /root/join.log 2>&1
 
 # SSH: allow password authentication for AD users
 if [ -f /etc/ssh/sshd_config.d/60-cloudimg-settings.conf ]; then

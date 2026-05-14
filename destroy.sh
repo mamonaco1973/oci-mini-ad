@@ -43,4 +43,7 @@ terraform destroy -auto-approve
 
 cd ..
 
+# Remove generated key pair so next apply produces a fresh one
+rm -f 01-directory/keys/Private_Key 01-directory/keys/Private_Key.pub
+
 echo "NOTE: Infrastructure destruction complete."
