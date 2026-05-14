@@ -22,8 +22,8 @@ systemctl disable --now apt-daily.service apt-daily-upgrade.service unattended-u
 # TODO: restrict source CIDR and open only required ports for production.
 iptables -I INPUT -s 0.0.0.0/0 -j ACCEPT
 
-# Inputs injected by Terraform via templatefile
-ADMIN_PASSWORD="${admin_password}"
+# Non-sensitive config injected by Terraform via templatefile
+VAULT_ID="${vault_id}"
 ADMIN_USERNAME="Admin"
 DOMAIN_FQDN="${domain_fqdn}"
 
@@ -65,11 +65,41 @@ echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debcon
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
 apt-get update -y
 apt-get install -y \
-  less curl jq \
+  less curl jq python3-pip \
   realmd sssd-ad sssd-tools libnss-sss libpam-sss \
   adcli samba-common-bin samba-libs \
   oddjob oddjob-mkhomedir packagekit krb5-user \
   nano vim iptables-persistent
+
+# OCI CLI provides instance principal auth — no static credentials needed.
+# --break-system-packages required on Ubuntu 24.04 (PEP 668 restriction).
+pip3 install --break-system-packages --quiet oci-cli
+
+# Fetch admin password from Vault using instance principal — IAM policy
+# propagation can lag; retry loop handles the window between policy creation
+# and when the instance principal grant becomes active in the IAM engine.
+echo "Fetching admin credentials from Vault..."
+ADMIN_PASSWORD=""
+for i in {1..10}; do
+  ADMIN_PASSWORD=$(oci secrets secret-bundle get-secret-bundle-by-name \
+    --auth instance_principal \
+    --vault-id "$VAULT_ID" \
+    --secret-name "admin_ad_credentials" \
+    2>/dev/null \
+    | jq -r '.data."secret-bundle-content".content' \
+    | base64 -d \
+    | jq -r '.password' 2>/dev/null || true)
+  if [ -n "$ADMIN_PASSWORD" ]; then
+    echo "Vault fetch succeeded on attempt $i"
+    break
+  fi
+  echo "Vault not ready (attempt $i/10), retrying in 30s..."
+  sleep 30
+done
+if [ -z "$ADMIN_PASSWORD" ]; then
+  echo "ERROR: failed to fetch admin password from Vault after 10 attempts"
+  exit 1
+fi
 
 # Wait for DC Kerberos — DNS resolving the domain is not enough; the full AD
 # stack (Kerberos, LDAP) takes longer after the DC reboots post-provision.

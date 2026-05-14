@@ -32,11 +32,15 @@ resource "oci_core_instance" "linux_ad_instance" {
   metadata = {
     ssh_authorized_keys = local.ssh_public_key
     user_data = base64encode(templatefile("./scripts/userdata.sh", {
-      admin_password    = local.admin_password
+      vault_id          = local.vault_id
       domain_fqdn       = var.dns_zone
       domain_fqdn_upper = upper(var.dns_zone)
       netbios           = var.netbios
       dc_ip             = local.dc_private_ip
     }))
   }
+
+  # IAM policy must exist before the instance boots so the vault lookup
+  # in userdata.sh can authenticate as an instance principal on first run.
+  depends_on = [oci_identity_policy.linux_vault_read]
 }

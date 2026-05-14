@@ -26,6 +26,10 @@ if [ -z "${OCI_COMPARTMENT_ID:-}" ]; then
 fi
 export TF_VAR_compartment_ocid="$OCI_COMPARTMENT_ID"
 
+# Dynamic groups must live in the root tenancy — always extract from config
+TENANCY_OCID=$(awk -F'=' '/^tenancy[[:space:]]*=/{gsub(/[[:space:]]/, "", $2); print $2; exit}' ~/.oci/config)
+export TF_VAR_tenancy_ocid="$TENANCY_OCID"
+
 # ------------------------------------------------------------------------------
 # Phase 1: Active Directory Deployment
 # ------------------------------------------------------------------------------
