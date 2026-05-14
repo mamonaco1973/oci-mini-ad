@@ -15,8 +15,16 @@ echo "user-data start: $(date -Is)"
 sysctl -w net.ipv6.conf.all.disable_ipv6=1
 sysctl -w net.ipv6.conf.default.disable_ipv6=1
 
-# Disable automatic updates — prevents apt lock contention during provisioning.
+# Disable automatic updates and kill any already-running apt processes —
+# OCI fires cloud-init fast enough that apt-daily may have grabbed the lock
+# before this script runs; disable alone does not kill an in-flight process.
 systemctl disable --now apt-daily.service apt-daily-upgrade.service unattended-upgrades.service 2>/dev/null || true
+pkill -9 -f unattended-upgrades 2>/dev/null || true
+pkill -9 -f apt 2>/dev/null || true
+while fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+  echo "Waiting for apt lock to clear..."
+  sleep 5
+done
 
 # OCI Ubuntu images block all inbound ports via iptables by default.
 # TODO: restrict source CIDR and open only required ports for production.
