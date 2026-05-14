@@ -37,6 +37,7 @@ TUNNEL_CMD=$(echo "$SESSION_DATA" | jq -r '.data["ssh-metadata"].command' \
   | sed "s|<privateKey>|${KEY}|g" \
   | sed "s|<localPort>|${LOCAL_PORT}|g")
 
+echo "Tunnel command: $TUNNEL_CMD"
 echo "Opening tunnel..."
 eval "$TUNNEL_CMD -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" &
 TUNNEL_PID=$!
