@@ -35,11 +35,14 @@ resource "oci_vault_secret" "admin_password" {
   compartment_id = var.compartment_ocid
   vault_id       = oci_kms_vault.ad_vault.id
   key_id         = oci_kms_key.ad_key.id
-  secret_name    = "mini-ad-admin"
+  secret_name    = "admin_ad_credentials"
 
   secret_content {
     content_type = "BASE64"
-    content      = base64encode(random_password.admin_password.result)
+    content = base64encode(jsonencode({
+      username = "Admin@${var.dns_zone}"
+      password = random_password.admin_password.result
+    }))
   }
 }
 
@@ -47,11 +50,14 @@ resource "oci_vault_secret" "jsmith_password" {
   compartment_id = var.compartment_ocid
   vault_id       = oci_kms_vault.ad_vault.id
   key_id         = oci_kms_key.ad_key.id
-  secret_name    = "mini-ad-jsmith"
+  secret_name    = "jsmith_ad_credentials"
 
   secret_content {
     content_type = "BASE64"
-    content      = base64encode(random_password.jsmith_password.result)
+    content = base64encode(jsonencode({
+      username = "jsmith@${var.dns_zone}"
+      password = random_password.jsmith_password.result
+    }))
   }
 }
 
@@ -59,11 +65,14 @@ resource "oci_vault_secret" "edavis_password" {
   compartment_id = var.compartment_ocid
   vault_id       = oci_kms_vault.ad_vault.id
   key_id         = oci_kms_key.ad_key.id
-  secret_name    = "mini-ad-edavis"
+  secret_name    = "edavis_ad_credentials"
 
   secret_content {
     content_type = "BASE64"
-    content      = base64encode(random_password.edavis_password.result)
+    content = base64encode(jsonencode({
+      username = "edavis@${var.dns_zone}"
+      password = random_password.edavis_password.result
+    }))
   }
 }
 
@@ -71,11 +80,14 @@ resource "oci_vault_secret" "rpatel_password" {
   compartment_id = var.compartment_ocid
   vault_id       = oci_kms_vault.ad_vault.id
   key_id         = oci_kms_key.ad_key.id
-  secret_name    = "mini-ad-rpatel"
+  secret_name    = "rpatel_ad_credentials"
 
   secret_content {
     content_type = "BASE64"
-    content      = base64encode(random_password.rpatel_password.result)
+    content = base64encode(jsonencode({
+      username = "rpatel@${var.dns_zone}"
+      password = random_password.rpatel_password.result
+    }))
   }
 }
 
@@ -83,10 +95,13 @@ resource "oci_vault_secret" "akumar_password" {
   compartment_id = var.compartment_ocid
   vault_id       = oci_kms_vault.ad_vault.id
   key_id         = oci_kms_key.ad_key.id
-  secret_name    = "mini-ad-akumar"
+  secret_name    = "akumar_ad_credentials"
 
   secret_content {
     content_type = "BASE64"
-    content      = base64encode(random_password.akumar_password.result)
+    content = base64encode(jsonencode({
+      username = "akumar@${var.dns_zone}"
+      password = random_password.akumar_password.result
+    }))
   }
 }

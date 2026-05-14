@@ -16,21 +16,21 @@ if [ -z "$VAULT_ID" ]; then
   exit 1
 fi
 
-PASSWORD=$(oci secrets secret-bundle get-secret-bundle-by-name \
+SECRET_JSON=$(oci secrets secret-bundle get-secret-bundle-by-name \
   --vault-id "$VAULT_ID" \
-  --secret-name "mini-ad-${USER}" \
+  --secret-name "${USER}_ad_credentials" \
   2>/dev/null \
   | jq -r '.data."secret-bundle-content".content' \
   | base64 -d)
 
-if [ -z "$PASSWORD" ]; then
+if [ -z "$SECRET_JSON" ]; then
   echo "ERROR: No secret found for user '$USER'"
   echo "Valid users: admin, jsmith, edavis, rpatel, akumar"
   exit 1
 fi
 
-DNS_ZONE=$(grep -A3 'variable "dns_zone"' 01-directory/variables.tf \
-  | grep default | sed 's/.*"\(.*\)".*/\1/')
+USERNAME=$(echo "$SECRET_JSON" | jq -r '.username')
+PASSWORD=$(echo "$SECRET_JSON" | jq -r '.password')
 
-echo "Username : ${USER}@${DNS_ZONE}"
+echo "Username : ${USERNAME}"
 echo "Password : ${PASSWORD}"
