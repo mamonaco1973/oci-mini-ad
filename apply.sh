@@ -37,6 +37,7 @@ terraform init
 terraform apply -auto-approve
 
 cd ..
+exit 0
 
 # ------------------------------------------------------------------------------
 # Phase 2: Client Instances (Linux + Windows)
