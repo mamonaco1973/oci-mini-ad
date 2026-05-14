@@ -21,7 +21,6 @@ While the mini-AD deployment provides a functional and cost-effective Active Dir
 - **GPO Replication** — Samba GPO support is limited; no automatic replication.
 - **PowerShell AD Cmdlets** — Samba lacks native AD Web Services; many cmdlets do not work.
 - **Production Security Hardening** — Security posture depends entirely on your configuration.
-- **Vault Pending Deletion** — On destroy, OCI schedules the vault for deletion (minimum 7 days). A redeploy with the same name will fail until OCI removes the pending vault.
 
 ---
 
