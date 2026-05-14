@@ -10,6 +10,27 @@ trap 'echo "ERROR at line $LINENO"; exit 1' ERR
 
 echo "user-data start: $(date -Is)"
 
+# OCI Ubuntu images block all inbound ports via iptables by default.
+# TODO: restrict source CIDR and open only required ports for production.
+iptables -I INPUT -s 0.0.0.0/0 -j ACCEPT
+
+# Inputs injected by Terraform via templatefile
+ADMIN_PASSWORD="${admin_password}"
+ADMIN_USERNAME="Admin"
+DOMAIN_FQDN="${domain_fqdn}"
+
+# Pin DNS immediately — systemd-resolved stub (127.0.0.53) blocks DC resolution.
+# Must run before any wait loops so 8.8.8.8 handles external names if DC is slow.
+systemctl stop systemd-resolved || true
+systemctl disable systemd-resolved || true
+[ -L /etc/resolv.conf ] && rm -f /etc/resolv.conf
+cat > /etc/resolv.conf <<EOF
+search ${domain_fqdn}
+nameserver ${dc_ip}
+nameserver 8.8.8.8
+EOF
+chattr +i /etc/resolv.conf || true
+
 echo "Waiting for DNS resolution..."
 until nslookup us.archive.ubuntu.com >/dev/null 2>&1; do
   echo "DNS not ready yet, retrying in 30s..."
@@ -24,22 +45,6 @@ until curl -fsS --max-time 10 https://us.archive.ubuntu.com/ >/dev/null 2>&1; do
 done
 echo "Network ready: $(date -Is)"
 
-# Inputs injected by Terraform via templatefile
-ADMIN_PASSWORD="${admin_password}"
-ADMIN_USERNAME="Admin"
-DOMAIN_FQDN="${domain_fqdn}"
-
-# Disable systemd-resolved stub — pin resolv.conf to DC for AD DNS + fallback
-systemctl stop systemd-resolved || true
-systemctl disable systemd-resolved || true
-[ -L /etc/resolv.conf ] && rm -f /etc/resolv.conf
-cat > /etc/resolv.conf <<EOF
-search ${domain_fqdn}
-nameserver ${dc_ip}
-nameserver 8.8.8.8
-EOF
-chattr +i /etc/resolv.conf || true
-
 # Packages
 # Rewrite apt sources — avoids ubuntu.com DDoS issues on OCI
 sed -i 's|http://archive.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
@@ -48,13 +53,15 @@ sed -i 's|http://security.ubuntu.com|http://us.archive.ubuntu.com|g' /etc/apt/so
 export DEBIAN_FRONTEND=noninteractive
 # OCI NAT gateway does not route IPv6 — force IPv4 for all apt traffic
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
+echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
 apt-get update -y
 apt-get install -y \
   less curl jq \
   realmd sssd-ad sssd-tools libnss-sss libpam-sss \
   adcli samba-common-bin samba-libs \
   oddjob oddjob-mkhomedir packagekit krb5-user \
-  nano vim
+  nano vim iptables-persistent
 
 # Wait for DC to be reachable via DNS — OCI cloud-init fires before DNS propagates
 for i in {1..60}; do
@@ -102,6 +109,8 @@ if [ ! -f "$SUDO_FILE" ]; then
   echo "%linux-admins ALL=(ALL) NOPASSWD:ALL" > "$SUDO_FILE"
   chmod 440 "$SUDO_FILE"
 fi
+
+netfilter-persistent save
 
 realm list || true
 echo "user-data complete: $(date -Is)"
