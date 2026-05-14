@@ -65,15 +65,18 @@ echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debcon
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
 apt-get update -y
 apt-get install -y \
-  less curl jq python3-pip \
+  less curl jq python3-venv \
   realmd sssd-ad sssd-tools libnss-sss libpam-sss \
   adcli samba-common-bin samba-libs \
   oddjob oddjob-mkhomedir packagekit krb5-user \
   nano vim iptables-persistent
 
-# OCI CLI provides instance principal auth — no static credentials needed.
-# --break-system-packages required on Ubuntu 24.04 (PEP 668 restriction).
-pip3 install --break-system-packages --quiet oci-cli
+# Install OCI CLI into a venv — avoids conflict with Debian-managed urllib3
+# which has no RECORD file and blocks pip's dependency resolution.
+python3 -m venv /opt/oci-venv
+/opt/oci-venv/bin/pip install --quiet oci-cli
+ln -sf /opt/oci-venv/bin/oci /usr/local/bin/oci
+OCI=/usr/local/bin/oci
 
 # Fetch admin password from Vault using instance principal — IAM policy
 # propagation can lag; retry loop handles the window between policy creation
@@ -81,7 +84,7 @@ pip3 install --break-system-packages --quiet oci-cli
 echo "Fetching admin credentials from Vault..."
 ADMIN_PASSWORD=""
 for i in {1..10}; do
-  ADMIN_PASSWORD=$(oci secrets secret-bundle get-secret-bundle-by-name \
+  ADMIN_PASSWORD=$("$OCI" secrets secret-bundle get-secret-bundle-by-name \
     --auth instance_principal \
     --vault-id "$VAULT_ID" \
     --secret-name "admin_ad_credentials" \
