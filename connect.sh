@@ -60,7 +60,7 @@ while true; do
   [ "$STATE" = "ACTIVE" ] && break
   sleep 10
 done
-sleep 5
+sleep 15
 
 TUNNEL_CMD=$(echo "$SESSION_DATA" | jq -r '.data["ssh-metadata"].command' \
   | sed "s|<privateKey>|${TMP_KEY}|g" \
