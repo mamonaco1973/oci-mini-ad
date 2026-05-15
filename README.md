@@ -24,6 +24,18 @@ While the mini-AD deployment provides a functional and cost-effective Active Dir
 
 ---
 
+## Why We Did Not Use OCI Vault
+
+OCI KMS Vault was the natural choice for storing generated AD passwords securely, and we did implement it initially. Each AD account password was stored as a versioned secret in a DEFAULT vault, and the Linux client retrieved its domain-join credential at boot using OCI instance principal authentication — so no plaintext password ever appeared in instance metadata or Terraform outputs.
+
+However, OCI imposes a **mandatory 30-day pending-deletion hold** on KMS vaults after they are destroyed. During this hold the vault still counts against the tenancy service limit, which defaults to one vault per tenancy even on pay-as-you-go accounts. This makes the vault fundamentally incompatible with IAC destroy/rebuild workflows: every fresh `apply` after a `destroy` fails with `LimitExceeded` because the previous vault is still in `PENDING_DELETION`. The only workaround — cancelling the deletion and importing the vault back into Terraform state — is a manual operation that defeats repeatable automation.
+
+AWS Secrets Manager and Azure Key Vault both handle deletion gracefully and do not block re-creation. This is an OCI platform deficiency.
+
+**Current approach:** Passwords are stored as sensitive outputs in `terraform.tfstate`. The admin password is injected into client instances at apply time via `templatefile`, matching the pattern used for the Windows instance from the start. Use `./get_password.sh` to retrieve any credential directly from Terraform state.
+
+---
+
 ## Prerequisites
 
 - An OCI account with available Always Free resources
@@ -53,7 +65,7 @@ export OCI_COMPARTMENT_ID=<your-compartment-ocid>   # optional; falls back to te
 
 The deploy runs in two phases:
 
-1. **01-directory** — VCN, subnets, bastion, and the Samba 4 DC. Waits 10 minutes after the DC instance is created before updating DHCP options, allowing the DC to fully bootstrap.
+1. **01-directory** — VCN, subnets, bastion, and the Samba 4 DC. Waits for the DC to signal bootstrap completion before updating DHCP options.
 2. **02-servers** — Linux and Windows client instances that domain-join at first boot.
 
 Total build time is approximately 15–20 minutes end to end.
@@ -75,10 +87,9 @@ When the deployment completes, the following resources are created:
 - Private subnet placement — no public IP
 - VCN DHCP options updated to point DNS at the DC after provisioning
 
-**Secrets:**
-- OCI Vault (DEFAULT type) with an AES-256 master key
-- All AD account passwords stored as named secrets (`mini-ad-<user>`)
-- Retrieved via `./get_password.sh` using the OCI CLI — passwords are not stored in tfstate
+**Credentials:**
+- All AD account passwords generated randomly and stored as sensitive outputs in `terraform.tfstate`
+- Retrieved via `./get_password.sh` — no external secret store required
 
 **Bastion:**
 - OCI Bastion Service (STANDARD, free) for SSH access to the private DC
@@ -126,7 +137,7 @@ The DC has no public IP. Use `connect.sh` to create an OCI Bastion port-forwardi
 
 ## Retrieving Passwords
 
-Passwords are stored in OCI Vault and retrieved via the OCI CLI:
+Passwords are read directly from Terraform state:
 
 ```bash
 ./get_password.sh admin
@@ -134,6 +145,7 @@ Passwords are stored in OCI Vault and retrieved via the OCI CLI:
 ./get_password.sh edavis
 ./get_password.sh rpatel
 ./get_password.sh akumar
+./get_password.sh windows_local_admin
 ```
 
 Output:
@@ -141,8 +153,6 @@ Output:
 Username : jsmith@mcloud.mikecloud.com
 Password : <generated-password>
 ```
-
-Secrets are named `mini-ad-<user>` in the vault and can also be viewed directly in the OCI Console under **Security → Vault**.
 
 ---
 

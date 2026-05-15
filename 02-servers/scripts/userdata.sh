@@ -83,6 +83,11 @@ apt-get install -y \
   oddjob oddjob-mkhomedir packagekit krb5-user \
   nano vim iptables-persistent
 
+# Install OCI CLI into a venv — avoids conflict with Debian-managed urllib3
+# which has no RECORD file and blocks pip's dependency resolution.
+python3 -m venv /opt/oci-venv
+/opt/oci-venv/bin/pip install --quiet oci-cli
+ln -sf /opt/oci-venv/bin/oci /usr/local/bin/oci
 
 # Wait for DC Kerberos — DNS resolving the domain is not enough; the full AD
 # stack (Kerberos, LDAP) takes longer after the DC reboots post-provision.

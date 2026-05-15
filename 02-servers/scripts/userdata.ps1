@@ -27,6 +27,23 @@ try {
     Install-WindowsFeature -Name GPMC,RSAT-AD-PowerShell,RSAT-AD-AdminCenter,RSAT-ADDS-Tools,RSAT-DNS-Server
     Write-Output "AD management feature install complete"
 
+    Write-Output "Installing OCI CLI"
+    $ociInstallScript = "$env:TEMP\install-oci-cli.ps1"
+    Invoke-WebRequest `
+        -Uri "https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.ps1" `
+        -OutFile $ociInstallScript `
+        -UseBasicParsing
+    powershell -NoProfile -ExecutionPolicy Bypass -File $ociInstallScript `
+        --accept-all-defaults `
+        --install-dir "C:\oracle\oci-cli" `
+        --exec-dir "C:\oracle\oci-cli\bin"
+    [Environment]::SetEnvironmentVariable(
+        "PATH",
+        $env:PATH + ";C:\oracle\oci-cli\bin",
+        [EnvironmentVariableTarget]::Machine)
+    $env:PATH += ";C:\oracle\oci-cli\bin"
+    Write-Output "OCI CLI install complete"
+
     Write-Output "Waiting for DNS to resolve ${domain_fqdn}..."
     $dnsReady = $false
     for ($i = 1; $i -le 20; $i++) {
