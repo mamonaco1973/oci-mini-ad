@@ -11,7 +11,10 @@ resource "oci_identity_dynamic_group" "linux_client" {
   compartment_id = var.tenancy_ocid
   name           = "mini-ad-linux-client-dg"
   description    = "Grants linux-ad-instance instance principal for Vault access"
-  matching_rule  = "instance.id = '${oci_core_instance.linux_ad_instance.id}'"
+  # Compartment-scoped rule avoids a circular dependency — matching on
+  # instance.id would require the instance to exist first, but the instance
+  # depends_on this group's policy, so the group must be created first.
+  matching_rule  = "ANY {instance.compartment.id = '${local.compartment_ocid}'}"
 }
 
 # Policy is scoped to the compartment — dynamic group is tenancy-level but
