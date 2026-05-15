@@ -98,6 +98,7 @@ for i in {1..10}; do
     --auth instance_principal \
     --vault-id "$VAULT_ID" \
     --secret-name "admin_ad_credentials" \
+    2>/dev/null \
     | jq -r '.data."secret-bundle-content".content' \
     | base64 -d \
     | jq -r '.password' 2>/dev/null || true)
