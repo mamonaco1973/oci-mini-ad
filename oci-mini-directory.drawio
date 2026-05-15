@@ -5,19 +5,19 @@
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="oci-cloud" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;strokeColor=#C74634;fillColor=none;verticalAlign=top;align=left;spacingLeft=14;fontColor=#C74634;dashed=0;labelBackgroundColor=#ffffff;rounded=1;arcSize=3;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;OCI Cloud&lt;/font&gt;" vertex="1">
-          <mxGeometry height="790" width="1110" x="30" y="10" as="geometry" />
+          <mxGeometry height="740" width="1010" x="30" y="10" as="geometry" />
         </mxCell>
         <mxCell id="region" parent="oci-cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;strokeColor=#006FA9;fillColor=none;verticalAlign=top;align=left;spacingLeft=14;fontColor=#006FA9;dashed=1;rounded=1;arcSize=3;" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;US-ASHBURN-1&lt;/font&gt;" vertex="1">
-          <mxGeometry height="730" width="1070" x="20" y="40" as="geometry" />
+          <mxGeometry height="670" width="960" x="20" y="40" as="geometry" />
         </mxCell>
         <mxCell id="vcn" parent="region" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;strokeColor=#006FA9;fillColor=none;verticalAlign=top;align=left;spacingLeft=14;fontColor=#006FA9;dashed=0;rounded=1;arcSize=3;" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;ad-vcn (10.0.0.0/24)&lt;/font&gt;" vertex="1">
-          <mxGeometry height="670" width="740" x="20" y="30" as="geometry" />
+          <mxGeometry height="610" width="910" x="20" y="30" as="geometry" />
         </mxCell>
         <mxCell id="ad-subnet" parent="vcn" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=14;fontColor=#248814;dashed=0;rounded=1;arcSize=3;" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;ad-subnet PRIVATE (10.0.0.0/26)&lt;/font&gt;" vertex="1">
-          <mxGeometry height="210" width="680" x="30" y="50" as="geometry" />
+          <mxGeometry height="210" width="840" x="30" y="50" as="geometry" />
         </mxCell>
         <mxCell id="dc-group" connectable="0" parent="ad-subnet" style="group;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="130" width="160" x="275" y="40" as="geometry" />
+          <mxGeometry height="140" width="160" x="355" y="30" as="geometry" />
         </mxCell>
         <mxCell id="dc-2" parent="dc-group" style="vsdxID=53;fillColor=none;gradientColor=none;strokeColor=none;spacingTop=-7;spacingBottom=-3;spacingLeft=-3;spacingRight=-3;points=[];labelBackgroundColor=none;rounded=0;html=1;whiteSpace=wrap;" vertex="1">
           <mxGeometry height="84" width="84" as="geometry" />
@@ -62,13 +62,13 @@
           <mxGeometry height="17" width="17" x="51" y="31" as="geometry" />
         </mxCell>
         <mxCell id="dc-label" parent="ad-subnet" style="verticalAlign=middle;align=center;vsdxID=68;fillColor=none;gradientColor=none;shape=stencil(nZBLDoAgDERP0z3SIyjew0SURgSD+Lu9kMZoXLhwN9O+tukAlrNpJg1SzDH4QW/URgNYgZTkjA4UkwJUgGXng+6DX1zLfmoymdXo17xh5zmRJ6Q42BWCfc2oJfdAr+Yv+AP9Cb7OJ3H/2JG1HNGz/84klThPVCc=);strokeColor=none;spacingTop=-3;spacingBottom=-3;spacingLeft=-3;spacingRight=-3;points=[];labelBackgroundColor=none;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;p style=&quot;margin:0;direction:ltr;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot; face=&quot;Helvetica&quot;&gt;Domain Controller&lt;br&gt;mini-ad-dc-mcloud&lt;/font&gt;&lt;/p&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="41" width="190" x="222" y="129" as="geometry" />
+          <mxGeometry height="21" width="190" x="310" y="129" as="geometry" />
         </mxCell>
         <mxCell id="vm-subnet" parent="vcn" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=14;fontColor=#248814;dashed=0;rounded=1;arcSize=3;" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;vm-subnet PUBLIC (10.0.0.64/26)&lt;/font&gt;" vertex="1">
-          <mxGeometry height="320" width="680" x="30" y="310" as="geometry" />
+          <mxGeometry height="260" width="840" x="30" y="310" as="geometry" />
         </mxCell>
         <mxCell id="linux-group" connectable="0" parent="vm-subnet" style="group;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="130" width="160" x="90" y="88" as="geometry" />
+          <mxGeometry height="130" width="160" x="90" y="81" as="geometry" />
         </mxCell>
         <mxCell id="linux-2" parent="linux-group" style="vsdxID=53;fillColor=none;gradientColor=none;strokeColor=none;spacingTop=-3;spacingBottom=-3;spacingLeft=-3;spacingRight=-3;points=[];labelBackgroundColor=none;rounded=0;html=1;whiteSpace=wrap;" vertex="1">
           <mxGeometry height="84" width="84" as="geometry" />
@@ -113,7 +113,7 @@
           <mxGeometry height="17" width="17" x="51" y="31" as="geometry" />
         </mxCell>
         <mxCell id="win-group" connectable="0" parent="vm-subnet" style="group;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="130" width="160" x="490" y="91" as="geometry" />
+          <mxGeometry height="130" width="160" x="600" y="81" as="geometry" />
         </mxCell>
         <mxCell id="win-2" parent="win-group" style="vsdxID=53;fillColor=none;gradientColor=none;strokeColor=none;spacingTop=-3;spacingBottom=-3;spacingLeft=-3;spacingRight=-3;points=[];labelBackgroundColor=none;rounded=0;html=1;whiteSpace=wrap;" vertex="1">
           <mxGeometry height="84" width="84" as="geometry" />
@@ -158,13 +158,10 @@
           <mxGeometry height="17" width="17" x="51" y="31" as="geometry" />
         </mxCell>
         <mxCell id="linux-label" parent="vm-subnet" style="verticalAlign=middle;align=center;vsdxID=68;fillColor=none;gradientColor=none;shape=stencil(nZBLDoAgDERP0z3SIyjew0SURgSD+Lu9kMZoXLhwN9O+tukAlrNpJg1SzDH4QW/URgNYgZTkjA4UkwJUgGXng+6DX1zLfmoymdXo17xh5zmRJ6Q42BWCfc2oJfdAr+Yv+AP9Cb7OJ3H/2JG1HNGz/84klThPVCc=);strokeColor=none;spacingTop=-3;spacingBottom=-3;spacingLeft=-3;spacingRight=-3;points=[];labelBackgroundColor=none;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;p style=&quot;margin:0;direction:ltr;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot; face=&quot;Helvetica&quot;&gt;Linux Client&lt;br&gt;linux-ad-instance&lt;/font&gt;&lt;/p&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="41" width="190" x="40" y="179" as="geometry" />
+          <mxGeometry height="41" width="190" x="40" y="174" as="geometry" />
         </mxCell>
         <mxCell id="win-label" parent="vm-subnet" style="verticalAlign=middle;align=center;vsdxID=68;fillColor=none;gradientColor=none;shape=stencil(nZBLDoAgDERP0z3SIyjew0SURgSD+Lu9kMZoXLhwN9O+tukAlrNpJg1SzDH4QW/URgNYgZTkjA4UkwJUgGXng+6DX1zLfmoymdXo17xh5zmRJ6Q42BWCfc2oJfdAr+Yv+AP9Cb7OJ3H/2JG1HNGz/84klThPVCc=);strokeColor=none;spacingTop=-3;spacingBottom=-3;spacingLeft=-3;spacingRight=-3;points=[];labelBackgroundColor=none;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;p style=&quot;margin:0;direction:ltr;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot; face=&quot;Helvetica&quot;&gt;Windows Client&lt;br&gt;windows-ad-instance&lt;/font&gt;&lt;/p&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="41" width="190" x="440" y="179" as="geometry" />
-        </mxCell>
-        <mxCell id="vault" parent="region" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;verticalAlign=middle;" value="&lt;b&gt;OCI Vault&lt;/b&gt;&lt;br&gt;mini-ad-vault-{suffix}&lt;br&gt;5 AD account secrets&lt;br&gt;(admin, jsmith, edavis, rpatel, akumar)" vertex="1">
-          <mxGeometry height="120" width="250" x="790" y="310" as="geometry" />
+          <mxGeometry height="41" width="190" x="550" y="170" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
