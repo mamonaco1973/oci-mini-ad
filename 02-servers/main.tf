@@ -39,7 +39,8 @@ locals {
   admin_password   = data.terraform_remote_state.directory.outputs.admin_password
   ssh_public_key   = data.terraform_remote_state.directory.outputs.ssh_public_key
   dc_private_ip    = data.terraform_remote_state.directory.outputs.dc_private_ip
-  vault_id         = data.terraform_remote_state.directory.outputs.vault_id
+  vault_id                    = data.terraform_remote_state.directory.outputs.vault_id
+  windows_local_admin_password = data.terraform_remote_state.directory.outputs.windows_local_admin_password
 }
 
 # ==============================================================================

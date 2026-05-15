@@ -55,3 +55,9 @@ resource "random_password" "akumar_password" {
   special          = true
   override_special = "!@#$%"
 }
+
+resource "random_password" "windows_local_admin_password" {
+  length           = 24
+  special          = true
+  override_special = "_-"
+}

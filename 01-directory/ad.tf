@@ -120,3 +120,9 @@ output "vault_id" {
   description = "OCID of the OCI Vault holding AD account secrets."
   value       = oci_kms_vault.ad_vault.id
 }
+
+output "windows_local_admin_password" {
+  description = "Local admin password for the Windows instance — RDP fallback."
+  value       = random_password.windows_local_admin_password.result
+  sensitive   = true
+}

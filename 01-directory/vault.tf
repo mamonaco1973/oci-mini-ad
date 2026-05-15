@@ -105,3 +105,18 @@ resource "oci_vault_secret" "akumar_password" {
     }))
   }
 }
+
+resource "oci_vault_secret" "windows_local_admin_password" {
+  compartment_id = var.compartment_ocid
+  vault_id       = oci_kms_vault.ad_vault.id
+  key_id         = oci_kms_key.ad_key.id
+  secret_name    = "windows_local_admin_credentials"
+
+  secret_content {
+    content_type = "BASE64"
+    content = base64encode(jsonencode({
+      username = "windows_local_admin"
+      password = random_password.windows_local_admin_password.result
+    }))
+  }
+}

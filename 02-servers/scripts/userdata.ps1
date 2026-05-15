@@ -10,6 +10,12 @@ Start-Transcript -Path $Log -Append -Force
 try {
     Write-Output "Starting PowerShell user-data at $(Get-Date -Format o)"
 
+    Write-Output "Setting local windows_local_admin account for RDP fallback access"
+    $localPassword = "${windows_local_admin_password}" | ConvertTo-SecureString -AsPlainText -Force
+    New-LocalUser -Name "windows_local_admin" -Password $localPassword -PasswordNeverExpires -ErrorAction SilentlyContinue
+    Add-LocalGroupMember -Group "Administrators" -Member "windows_local_admin" -ErrorAction SilentlyContinue
+    Add-LocalGroupMember -Group "Remote Desktop Users" -Member "windows_local_admin" -ErrorAction SilentlyContinue
+
     Write-Output "Disabling IPv6 — OCI subnets are IPv4-only"
     Get-NetAdapterBinding -ComponentID ms_tcpip6 | Disable-NetAdapterBinding
 

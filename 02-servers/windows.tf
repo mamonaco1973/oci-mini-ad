@@ -31,9 +31,10 @@ resource "oci_core_instance" "windows_ad_instance" {
 
   metadata = {
     user_data = base64encode(templatefile("./scripts/userdata.ps1", {
-      admin_password = local.admin_password
-      domain_fqdn    = var.dns_zone
-      netbios        = var.netbios
+      admin_password              = local.admin_password
+      windows_local_admin_password = local.windows_local_admin_password
+      domain_fqdn                 = var.dns_zone
+      netbios                     = var.netbios
     }))
   }
 }
