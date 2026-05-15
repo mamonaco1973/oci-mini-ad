@@ -68,8 +68,12 @@ export DEBIAN_FRONTEND=noninteractive
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
-apt-get -o DPkg::Lock::Timeout=300 update -y
-apt-get -o DPkg::Lock::Timeout=300 install -y \
+for i in {1..20}; do
+  apt-get update -y && break
+  echo "apt-get update failed (attempt $i/20), retrying in 15s..."
+  sleep 15
+done
+apt-get install -y \
   less curl jq python3-venv \
   realmd sssd-ad sssd-tools libnss-sss libpam-sss \
   adcli samba-common-bin samba-libs \
