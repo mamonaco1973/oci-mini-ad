@@ -68,11 +68,13 @@ export DEBIAN_FRONTEND=noninteractive
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
+# APT::Update::Error-Mode=any makes apt-get update exit non-zero when any
+# source fails — without it, W: warnings still exit 0 and fool the retry loop.
 for i in {1..20}; do
-  apt-get update -y && break
-  echo "apt-get update failed (attempt $i/20), killing apt and retrying in 15s..."
+  apt-get update -y -o APT::Update::Error-Mode=any && break
+  echo "apt-get update failed (attempt $i/20), killing apt and retrying in 30s..."
   pkill -9 -f apt 2>/dev/null || true
-  sleep 15
+  sleep 30
 done
 apt-get install -y \
   less curl jq python3-venv \
