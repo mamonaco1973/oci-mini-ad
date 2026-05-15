@@ -13,6 +13,7 @@ module "mini_ad" {
   source = "github.com/mamonaco1973/module-oci-mini-ad"
 
   compartment_id = var.compartment_ocid
+  tenancy_ocid   = var.tenancy_ocid
 
   # Domain identity
   netbios      = var.netbios

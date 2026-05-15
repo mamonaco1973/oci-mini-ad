@@ -7,6 +7,11 @@ variable "compartment_ocid" {
   type        = string
 }
 
+variable "tenancy_ocid" {
+  description = "OCID of the root tenancy — required for dynamic group creation in the module."
+  type        = string
+}
+
 # ==============================================================================
 # Active Directory Naming Inputs
 # ==============================================================================
