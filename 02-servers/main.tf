@@ -36,10 +36,9 @@ locals {
   compartment_ocid = data.terraform_remote_state.directory.outputs.compartment_ocid
   vcn_id           = data.terraform_remote_state.directory.outputs.vcn_id
   vm_subnet_ocid   = data.terraform_remote_state.directory.outputs.vm_subnet_ocid
-  admin_password   = data.terraform_remote_state.directory.outputs.admin_password
-  ssh_public_key   = data.terraform_remote_state.directory.outputs.ssh_public_key
-  dc_private_ip    = data.terraform_remote_state.directory.outputs.dc_private_ip
-  vault_id                    = data.terraform_remote_state.directory.outputs.vault_id
+  admin_password               = data.terraform_remote_state.directory.outputs.admin_password
+  ssh_public_key               = data.terraform_remote_state.directory.outputs.ssh_public_key
+  dc_private_ip                = data.terraform_remote_state.directory.outputs.dc_private_ip
   windows_local_admin_password = data.terraform_remote_state.directory.outputs.windows_local_admin_password
 }
 

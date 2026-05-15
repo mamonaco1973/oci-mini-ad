@@ -1,36 +1,41 @@
 #!/bin/bash
 set -euo pipefail
 
+VALID_USERS="admin jsmith edavis rpatel akumar windows_local_admin"
+
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <user>"
-  echo "Valid users: admin, jsmith, edavis, rpatel, akumar"
+  echo "Valid users: $VALID_USERS"
   exit 1
 fi
 
 USER="$1"
 
-VAULT_ID=$(cd 01-directory && terraform output -raw vault_id 2>/dev/null || echo "")
+case "$USER" in
+  admin)               OUTPUT="admin_password" ;;
+  jsmith)              OUTPUT="jsmith_password" ;;
+  edavis)              OUTPUT="edavis_password" ;;
+  rpatel)              OUTPUT="rpatel_password" ;;
+  akumar)              OUTPUT="akumar_password" ;;
+  windows_local_admin) OUTPUT="windows_local_admin_password" ;;
+  *)
+    echo "ERROR: Unknown user '$USER'"
+    echo "Valid users: $VALID_USERS"
+    exit 1
+    ;;
+esac
 
-if [ -z "$VAULT_ID" ]; then
-  echo "ERROR: vault_id not found — has 01-directory been applied?"
+PASSWORD=$(cd 01-directory && terraform output -raw "$OUTPUT" 2>/dev/null)
+DNS_ZONE=$(cd 01-directory && terraform output -raw dns_zone 2>/dev/null)
+
+if [ -z "$PASSWORD" ]; then
+  echo "ERROR: could not read $OUTPUT from tfstate — has 01-directory been applied?"
   exit 1
 fi
 
-SECRET_JSON=$(oci secrets secret-bundle get-secret-bundle-by-name \
-  --vault-id "$VAULT_ID" \
-  --secret-name "${USER}_ad_credentials" \
-  2>/dev/null \
-  | jq -r '.data."secret-bundle-content".content' \
-  | base64 -d)
-
-if [ -z "$SECRET_JSON" ]; then
-  echo "ERROR: No secret found for user '$USER'"
-  echo "Valid users: admin, jsmith, edavis, rpatel, akumar"
-  exit 1
+if [ "$USER" = "windows_local_admin" ]; then
+  echo "Username : windows_local_admin (local account)"
+else
+  echo "Username : ${USER}@${DNS_ZONE}"
 fi
-
-USERNAME=$(echo "$SECRET_JSON" | jq -r '.username')
-PASSWORD=$(echo "$SECRET_JSON" | jq -r '.password')
-
-echo "Username : ${USERNAME}"
 echo "Password : ${PASSWORD}"

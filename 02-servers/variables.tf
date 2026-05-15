@@ -21,7 +21,3 @@ variable "netbios" {
   default     = "MCLOUD"
 }
 
-variable "tenancy_ocid" {
-  description = "Root tenancy OCID — dynamic groups must be created here."
-  type        = string
-}

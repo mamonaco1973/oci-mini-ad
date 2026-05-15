@@ -117,9 +117,9 @@ output "bastion_id" {
   value       = oci_bastion_bastion.ad_bastion.id
 }
 
-output "vault_id" {
-  description = "OCID of the OCI Vault holding AD account secrets."
-  value       = oci_kms_vault.ad_vault.id
+output "dns_zone" {
+  description = "AD DNS zone — used by get_password.sh to display fully-qualified usernames."
+  value       = var.dns_zone
 }
 
 output "windows_local_admin_password" {

@@ -27,9 +27,9 @@ sleep 2
 # TODO: restrict source CIDR and open only required ports for production.
 iptables -I INPUT -s 0.0.0.0/0 -j ACCEPT
 
-# Non-sensitive config injected by Terraform via templatefile
-VAULT_ID="${vault_id}"
+# Credentials and config injected by Terraform via templatefile
 ADMIN_USERNAME="Admin"
+ADMIN_PASSWORD="${admin_password}"
 DOMAIN_FQDN="${domain_fqdn}"
 
 # Pin DNS immediately — systemd-resolved stub (127.0.0.53) blocks DC resolution.
@@ -83,38 +83,6 @@ apt-get install -y \
   oddjob oddjob-mkhomedir packagekit krb5-user \
   nano vim iptables-persistent
 
-# Install OCI CLI into a venv — avoids conflict with Debian-managed urllib3
-# which has no RECORD file and blocks pip's dependency resolution.
-python3 -m venv /opt/oci-venv
-/opt/oci-venv/bin/pip install --quiet oci-cli
-ln -sf /opt/oci-venv/bin/oci /usr/local/bin/oci
-OCI=/usr/local/bin/oci
-
-# Fetch admin password from Vault using instance principal — IAM policy
-# propagation can lag; retry loop handles the window between policy creation
-# and when the instance principal grant becomes active in the IAM engine.
-echo "Fetching admin credentials from Vault..."
-ADMIN_PASSWORD=""
-for i in {1..10}; do
-  ADMIN_PASSWORD=$("$OCI" secrets secret-bundle get-secret-bundle-by-name \
-    --auth instance_principal \
-    --vault-id "$VAULT_ID" \
-    --secret-name "admin_ad_credentials" \
-    2>/dev/null \
-    | jq -r '.data."secret-bundle-content".content' \
-    | base64 -d \
-    | jq -r '.password' 2>/dev/null || true)
-  if [ -n "$ADMIN_PASSWORD" ]; then
-    echo "Vault fetch succeeded on attempt $i"
-    break
-  fi
-  echo "Vault not ready (attempt $i/10), retrying in 30s..."
-  sleep 30
-done
-if [ -z "$ADMIN_PASSWORD" ]; then
-  echo "ERROR: failed to fetch admin password from Vault after 10 attempts"
-  exit 1
-fi
 
 # Wait for DC Kerberos — DNS resolving the domain is not enough; the full AD
 # stack (Kerberos, LDAP) takes longer after the DC reboots post-provision.
