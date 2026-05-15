@@ -70,7 +70,8 @@ echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debcon
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
 for i in {1..20}; do
   apt-get update -y && break
-  echo "apt-get update failed (attempt $i/20), retrying in 15s..."
+  echo "apt-get update failed (attempt $i/20), killing apt and retrying in 15s..."
+  pkill -9 -f apt 2>/dev/null || true
   sleep 15
 done
 apt-get install -y \
