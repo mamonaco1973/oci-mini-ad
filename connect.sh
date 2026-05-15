@@ -3,8 +3,23 @@ set -uo pipefail
 
 LOCAL_PORT=2222
 
-BASTION_ID=$(cd 01-directory && terraform output -raw bastion_id)
-DC_IP=$(cd 01-directory && terraform output -raw dc_private_ip)
+# Fall back to OCI CLI lookup if the apply is still in-progress and outputs
+# aren't written to state yet (Terraform only commits outputs on apply completion).
+BASTION_ID="${BASTION_ID:-$(cd 01-directory && terraform output -raw bastion_id 2>/dev/null)}"
+if [ -z "$BASTION_ID" ]; then
+  echo "terraform output missing — looking up bastion via OCI CLI..."
+  BASTION_ID=$(oci bastion bastion list \
+    --compartment-id "${OCI_COMPARTMENT_ID:-$(awk -F= '/^tenancy/{print $2}' ~/.oci/config | tr -d ' ')}" \
+    --all \
+    --query 'data[0].id' \
+    --raw-output)
+fi
+if [ -z "$BASTION_ID" ]; then
+  echo "ERROR: could not determine bastion OCID" >&2
+  exit 1
+fi
+
+DC_IP=$(cd 01-directory && terraform output -raw dc_private_ip 2>/dev/null)
 TARGET_IP="${1:-$DC_IP}"
 
 echo "Target: $TARGET_IP"
