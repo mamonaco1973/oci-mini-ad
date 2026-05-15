@@ -11,7 +11,7 @@ resource "oci_core_instance" "linux_ad_instance" {
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
   compartment_id      = local.compartment_ocid
   shape               = "VM.Standard.E4.Flex"
-  display_name        = "linux-ad-instance"
+  display_name        = local.linux_hostname
 
   shape_config {
     ocpus         = 1

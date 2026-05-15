@@ -13,7 +13,17 @@ terraform {
       source  = "oracle/oci"
       version = "~> 6.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
+}
+
+# Unique 4-hex suffix so each deploy gets fresh computer account names —
+# prevents domain join conflicts if old accounts still exist in AD after destroy.
+resource "random_id" "server_suffix" {
+  byte_length = 2
 }
 
 provider "oci" {
@@ -40,6 +50,8 @@ locals {
   ssh_public_key               = data.terraform_remote_state.directory.outputs.ssh_public_key
   dc_private_ip                = data.terraform_remote_state.directory.outputs.dc_private_ip
   windows_local_admin_password = data.terraform_remote_state.directory.outputs.windows_local_admin_password
+  linux_hostname   = "linux-${random_id.server_suffix.hex}"
+  windows_hostname = "win-${random_id.server_suffix.hex}"
 }
 
 # ==============================================================================

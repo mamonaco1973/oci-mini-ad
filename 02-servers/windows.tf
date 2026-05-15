@@ -11,7 +11,7 @@ resource "oci_core_instance" "windows_ad_instance" {
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
   compartment_id      = local.compartment_ocid
   shape               = "VM.Standard.E4.Flex"
-  display_name        = "windows-ad-instance"
+  display_name        = local.windows_hostname
 
   shape_config {
     ocpus         = 2
@@ -31,10 +31,10 @@ resource "oci_core_instance" "windows_ad_instance" {
 
   metadata = {
     user_data = base64encode(templatefile("./scripts/userdata.ps1", {
-      admin_password              = local.admin_password
+      admin_password               = local.admin_password
       windows_local_admin_password = local.windows_local_admin_password
-      domain_fqdn                 = var.dns_zone
-      netbios                     = var.netbios
+      domain_fqdn                  = var.dns_zone
+      netbios                      = var.netbios
     }))
   }
 }
