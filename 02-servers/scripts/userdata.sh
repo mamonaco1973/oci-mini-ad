@@ -21,10 +21,7 @@ sysctl -w net.ipv6.conf.default.disable_ipv6=1
 systemctl disable --now apt-daily.service apt-daily-upgrade.service unattended-upgrades.service 2>/dev/null || true
 pkill -9 -f unattended-upgrades 2>/dev/null || true
 pkill -9 -f apt 2>/dev/null || true
-while fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-  echo "Waiting for apt lock to clear..."
-  sleep 5
-done
+sleep 2
 
 # OCI Ubuntu images block all inbound ports via iptables by default.
 # TODO: restrict source CIDR and open only required ports for production.
@@ -71,8 +68,8 @@ export DEBIAN_FRONTEND=noninteractive
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | debconf-set-selections
-apt-get update -y
-apt-get install -y \
+apt-get -o DPkg::Lock::Timeout=300 update -y
+apt-get -o DPkg::Lock::Timeout=300 install -y \
   less curl jq python3-venv \
   realmd sssd-ad sssd-tools libnss-sss libpam-sss \
   adcli samba-common-bin samba-libs \
