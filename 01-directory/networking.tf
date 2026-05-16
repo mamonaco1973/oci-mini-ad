@@ -140,30 +140,19 @@ resource "oci_core_security_list" "ad_sl" {
 # ==============================================================================
 # Subnets
 # ------------------------------------------------------------------------------
-# Public Subnets:
-#   - vm-subnet-1: Client workloads with public IP (Linux + Windows instances).
-#   - vm-subnet-2: Additional capacity.
+# Public Subnet:
+#   - vm-subnet: Client workloads with public IP (Linux + Windows instances).
 #
 # Private Subnet:
 #   - ad-subnet: Domain controller with NAT egress only.
 # ==============================================================================
 
-resource "oci_core_subnet" "vm_subnet_1" {
+resource "oci_core_subnet" "vm_subnet" {
   compartment_id    = var.compartment_ocid
   vcn_id            = oci_core_vcn.ad_vcn.id
   cidr_block        = "10.0.0.64/26"
-  display_name      = "vm-subnet-1"
-  dns_label         = "vmsubnet1"
-  route_table_id    = oci_core_route_table.public_rt.id
-  security_list_ids = [oci_core_security_list.vm_sl.id]
-}
-
-resource "oci_core_subnet" "vm_subnet_2" {
-  compartment_id    = var.compartment_ocid
-  vcn_id            = oci_core_vcn.ad_vcn.id
-  cidr_block        = "10.0.0.128/26"
-  display_name      = "vm-subnet-2"
-  dns_label         = "vmsubnet2"
+  display_name      = "vm-subnet"
+  dns_label         = "vmsubnet"
   route_table_id    = oci_core_route_table.public_rt.id
   security_list_ids = [oci_core_security_list.vm_sl.id]
 }

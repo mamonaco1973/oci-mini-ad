@@ -72,8 +72,8 @@ output "vcn_id" {
 }
 
 output "vm_subnet_ocid" {
-  description = "OCID of vm-subnet-1 for client instance placement."
-  value       = oci_core_subnet.vm_subnet_1.id
+  description = "OCID of vm-subnet for client instance placement."
+  value       = oci_core_subnet.vm_subnet.id
 }
 
 output "admin_password" {
