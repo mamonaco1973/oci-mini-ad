@@ -27,37 +27,59 @@ resource "local_file" "public_key" {
 # ==============================================================================
 
 resource "random_password" "admin_password" {
-  length           = 24
+  length           = 23
   special          = true
+  min_numeric      = 2
+  min_special      = 2
   override_special = "_-"
 }
 
 resource "random_password" "jsmith_password" {
-  length           = 24
+  length           = 23
   special          = true
-  override_special = "!@#$%"
+  min_numeric      = 2
+  min_special      = 2
+  # $ breaks PS1 double-quoted string interpolation — exclude it
+  override_special = "!@#%"
 }
 
 resource "random_password" "edavis_password" {
-  length           = 24
+  length           = 23
   special          = true
-  override_special = "!@#$%"
+  min_numeric      = 2
+  min_special      = 2
+  override_special = "!@#%"
 }
 
 resource "random_password" "rpatel_password" {
-  length           = 24
+  length           = 23
   special          = true
-  override_special = "!@#$%"
+  min_numeric      = 2
+  min_special      = 2
+  override_special = "!@#%"
 }
 
 resource "random_password" "akumar_password" {
-  length           = 24
+  length           = 23
   special          = true
-  override_special = "!@#$%"
+  min_numeric      = 2
+  min_special      = 2
+  override_special = "!@#%"
 }
 
 resource "random_password" "windows_local_admin_password" {
-  length           = 24
+  length           = 23
   special          = true
+  min_numeric      = 2
+  min_special      = 2
   override_special = "_-"
+}
+
+locals {
+  admin_password               = "A${random_password.admin_password.result}"
+  windows_local_admin_password = "A${random_password.windows_local_admin_password.result}"
+  jsmith_password              = "A${random_password.jsmith_password.result}"
+  edavis_password              = "A${random_password.edavis_password.result}"
+  rpatel_password              = "A${random_password.rpatel_password.result}"
+  akumar_password              = "A${random_password.akumar_password.result}"
 }

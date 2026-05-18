@@ -23,7 +23,7 @@ module "mini_ad" {
   users_json   = local.users_json
 
   # Authentication
-  ad_admin_password = random_password.admin_password.result
+  ad_admin_password = local.admin_password
 
   # Networking — DC placed in private subnet; module updates VCN default DHCP
   vcn_id                      = oci_core_vcn.ad_vcn.id
@@ -50,10 +50,10 @@ locals {
     REALM        = var.realm
     NETBIOS      = var.netbios
 
-    jsmith_password = random_password.jsmith_password.result
-    edavis_password = random_password.edavis_password.result
-    rpatel_password = random_password.rpatel_password.result
-    akumar_password = random_password.akumar_password.result
+    jsmith_password = local.jsmith_password
+    edavis_password = local.edavis_password
+    rpatel_password = local.rpatel_password
+    akumar_password = local.akumar_password
   })
 }
 
@@ -78,27 +78,27 @@ output "vm_subnet_ocid" {
 
 output "admin_password" {
   description = "AD admin password for domain join in 02-servers userdata."
-  value       = random_password.admin_password.result
+  value       = local.admin_password
   sensitive   = true
 }
 
 output "jsmith_password" {
-  value     = random_password.jsmith_password.result
+  value     = local.jsmith_password
   sensitive = true
 }
 
 output "edavis_password" {
-  value     = random_password.edavis_password.result
+  value     = local.edavis_password
   sensitive = true
 }
 
 output "rpatel_password" {
-  value     = random_password.rpatel_password.result
+  value     = local.rpatel_password
   sensitive = true
 }
 
 output "akumar_password" {
-  value     = random_password.akumar_password.result
+  value     = local.akumar_password
   sensitive = true
 }
 
@@ -124,6 +124,6 @@ output "dns_zone" {
 
 output "windows_local_admin_password" {
   description = "Local admin password for the Windows instance — RDP fallback."
-  value       = random_password.windows_local_admin_password.result
+  value       = local.windows_local_admin_password
   sensitive   = true
 }
