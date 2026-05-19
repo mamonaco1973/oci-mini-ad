@@ -88,6 +88,15 @@ try {
     Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
       -Name "UserAuthentication" -Value 1
 
+    # OCI DHCP pushes the VCN base domain as the search suffix, mangling AD FQDNs.
+    # Registry SearchList overrides DHCP and survives the domain join reboot.
+    Write-Output "Setting DNS suffix search list to ${domain_fqdn}"
+    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters' `
+        -Name 'SearchList' -Value "${domain_fqdn}"
+    $adapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
+    Set-DnsClient -InterfaceIndex $adapter.InterfaceIndex `
+        -ConnectionSpecificSuffix "${domain_fqdn}"
+
     Write-Output "Rebooting to finalize domain join and apply group policy"
     shutdown /r /t 5 /c "Initial OCI reboot to join domain" /f /d p:4:1
 }
