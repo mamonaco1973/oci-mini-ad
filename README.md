@@ -106,21 +106,21 @@ The following sample users and groups are created automatically during DC provis
 
 ### Groups
 
-| Group Name   | gidNumber |
-|--------------|-----------|
-| mcloud-users | 10001     |
-| us           | 10002     |
-| india        | 10003     |
-| linux-admins | 10004     |
+| Group Name                        | gidNumber |
+|-----------------------------------|-----------|
+| `{netbios}-users` (e.g. `mcloud-users`) | 10001 |
+| us                                | 10002     |
+| india                             | 10003     |
+| linux-admins                      | 10004     |
 
 ### Users
 
 | Username | Full Name   | uidNumber | gidNumber | Groups                           |
 |----------|-------------|-----------|-----------|----------------------------------|
-| jsmith   | John Smith  | 10001     | 10001     | mcloud-users, us, linux-admins   |
-| edavis   | Emily Davis | 10002     | 10001     | mcloud-users, us                 |
-| rpatel   | Raj Patel   | 10003     | 10001     | mcloud-users, india, linux-admins|
-| akumar   | Amit Kumar  | 10004     | 10001     | mcloud-users, india              |
+| jsmith   | John Smith  | 10001     | 10001     | `{netbios}-users`, us, linux-admins   |
+| edavis   | Emily Davis | 10002     | 10001     | `{netbios}-users`, us                 |
+| rpatel   | Raj Patel   | 10003     | 10001     | `{netbios}-users`, india, linux-admins|
+| akumar   | Amit Kumar  | 10004     | 10001     | `{netbios}-users`, india              |
 
 ---
 
@@ -172,8 +172,23 @@ Run `./validate.sh` to print the DC IP, bastion ID, and connection hints.
 
 Use the public IP shown in Terraform outputs. Connect via RDP with domain credentials:
 
-- **Username:** `MCLOUD\Admin` or any domain user from the table above
+- **Username:** `{NETBIOS}\Admin` (e.g. `MCLOUD\Admin`) or any domain user from the table above
 - **Password:** retrieved via `./get_password.sh <user>`
+
+---
+
+## Changing the Domain Name
+
+The default domain is `mcloud.mikecloud.com` / `MCLOUD`. To deploy with a different domain, uncomment and edit the four override lines near the top of `apply.sh` and `destroy.sh` before running either script:
+
+```bash
+export TF_VAR_dns_zone="lab.mikecloud.com"
+export TF_VAR_realm="LAB.MIKECLOUD.COM"
+export TF_VAR_netbios="LAB"
+export TF_VAR_user_base_dn="CN=Users,DC=lab,DC=mikecloud,DC=com"
+```
+
+The primary user group, SSSD config, and RDP group membership are all derived from `netbios` at deploy time — no other files need to be edited.
 
 ---
 
