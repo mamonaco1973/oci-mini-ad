@@ -9,6 +9,10 @@ An Ubuntu-based OCI compute instance acts as both a Domain Controller and DNS se
 
 This solution is **not intended for production use**, but provides a complete, repeatable environment for testing AD-connected workloads on OCI.
 
+See it in action — full deployment walkthrough below.
+
+[![Watch the video](https://img.youtube.com/vi/7wY6aBUX3T0/maxresdefault.jpg)](https://www.youtube.com/watch?v=7wY6aBUX3T0)
+
 ---
 
 ## Limitations
