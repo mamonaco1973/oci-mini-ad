@@ -1,189 +1,166 @@
-# OCI Mini Active Directory
+# Mini Active Directory on OCI
 
-This project deploys a fully functional Active Directory environment on OCI in minutes using Terraform, Samba 4, and automated configuration scripts. It is designed as a low-cost alternative to managed directory services for labs, demos, and development environments.
-
-![diagram](oci-mini-directory.png)
-
-
-An Ubuntu-based OCI compute instance acts as both a Domain Controller and DNS server, integrated into a custom VCN with secure networking and OCI Bastion Service for private instance access. Windows and Linux instances are also deployed and automatically join the domain at boot, enabling seamless AD authentication across platforms.
-
-This solution is **not intended for production use**, but provides a complete, repeatable environment for testing AD-connected workloads on OCI.
-
-See it in action — full deployment walkthrough below.
+A small, fast, low-cost **Active Directory** domain for labs: a **Samba 4**
+domain controller on one OCI instance, built in minutes with Terraform, with
+a Linux and a Windows instance that join the domain at boot and OCI Bastion
+for reaching the private DC. It's the base that the other OCI mini-AD
+projects build on. Not for production.
 
 [![Watch the video](https://img.youtube.com/vi/7wY6aBUX3T0/maxresdefault.jpg)](https://www.youtube.com/watch?v=7wY6aBUX3T0)
 
----
+| Piece | Where | Role |
+|---|---|---|
+| **mini-AD** (Samba DC) | `ad-subnet` (10.0.0.0/26, private) | Ubuntu 24.04 on `VM.Standard.A1.Flex` (ARM); domain `mcloud.mikecloud.com` / `MCLOUD`: users, groups, POSIX IDs, DNS, Kerberos; built by [`module-oci-mini-ad`](https://github.com/mamonaco1973/module-oci-mini-ad) |
+| **Linux client** | `vm-subnet` (10.0.0.64/26) | Ubuntu 24.04, `VM.Standard.E4.Flex` (1 OCPU, 4 GB); joins with `realm` and SSSD; SSH with AD passwords |
+| **Windows client** | `vm-subnet` | Windows Server 2022, `VM.Standard.E4.Flex` (2 OCPU, 16 GB); joins the domain; RSAT; local `windows_local_admin` fallback |
+| **OCI Bastion** | targets `ad-subnet` | SSH port-forwarding sessions to the DC |
+| **Object Storage** | regional | sentinel bucket the DC writes to when it has finished booting |
+| **NAT gateway** | `ad-subnet` route | outbound internet for the DC |
+| **Terraform state** | `01-directory/terraform.tfstate` | the AD and local admin passwords, as sensitive outputs; OCI Vault isn't used |
 
-## Limitations
+## Architecture
 
-While the mini-AD deployment provides a functional and cost-effective Active Directory environment for labs and development, it does not include many of the advanced features found in a managed directory service. Key gaps include:
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="architecture-dark.svg">
+  <img alt="An SSH client reaches a Linux client instance and an RDP client reaches a Windows Server 2022 instance; both are in the public VM subnet. Terraform keeps the AD passwords in its state and passes them to both instances as user data; both join the mini-AD domain controller, the Linux one with realm and SSSD. The DC sits in a private subnet, reaches the internet through a NAT gateway, is reached over SSH through OCI Bastion, and writes a dc-ready object to an Object Storage sentinel bucket when it has finished booting." src="architecture-light.svg">
+</picture>
 
-- **High Availability** — Single domain controller with no redundancy or failover.
-- **Automated Backups** — No built-in backup or point-in-time recovery.
-- **Automatic Patching** — OS and Samba updates require manual intervention.
-- **GPO Replication** — Samba GPO support is limited; no automatic replication.
-- **PowerShell AD Cmdlets** — Samba lacks native AD Web Services; many cmdlets do not work.
-- **Production Security Hardening** — Security posture depends entirely on your configuration.
+Regenerate with `python3 make_diagram.py`.
 
----
+- **`01-directory/`**: the VCN (`mini-ad-vcn`, 10.0.0.0/24) with `vm-subnet`
+  and the private `ad-subnet`, the internet and NAT gateways, the security
+  lists, the bastion, the SSH key pair and AD passwords, and the DC, with
+  users and POSIX attributes from `scripts/users.json.template`.
+- **`02-servers/`**: the Linux and Windows instances and their network
+  security groups. It reads the passwords, key and subnet IDs from the
+  `01-directory` state.
 
-## Why We Did Not Use OCI Vault
+## How it boots
 
-OCI KMS Vault was the natural choice for storing generated AD passwords securely, and we did implement it initially. Each AD account password was stored as a versioned secret in a DEFAULT vault, and the Linux client retrieved its domain-join credential at boot using OCI instance principal authentication — so no plaintext password ever appeared in instance metadata or Terraform outputs.
+1. The DC builds the domain and writes `dc-ready` to its sentinel bucket.
+   Terraform waits for that object, then points the VCN's DHCP options at the
+   DC for DNS.
+2. **Linux**: opens its iptables rules (OCI's Ubuntu images block inbound
+   ports by default), waits until the DC answers Kerberos, and joins with
+   `realm join`. SSSD is set for short names and the POSIX IDs stored in AD;
+   SSH accepts passwords; home directories are created on first login;
+   `linux-admins` get passwordless sudo.
+3. **Windows**: turns on NLA, creates a local `windows_local_admin` account
+   as an RDP fallback, disables IPv6 and Windows Update, installs RSAT and
+   the OCI CLI, waits for DNS, joins with `Add-Computer`, adds
+   `MCLOUD\mcloud-users` to Remote Desktop Users, and reboots.
 
-However, OCI imposes a **mandatory pending-deletion hold** on KMS vaults after they are destroyed. During this hold the vault still counts against the tenancy service limit, which defaults to one vault per tenancy even on pay-as-you-go accounts. This makes the vault fundamentally incompatible with IAC destroy/rebuild workflows: every fresh `apply` after a `destroy` fails with `LimitExceeded` because the previous vault is still in `PENDING_DELETION`. The only workaround — cancelling the deletion and importing the vault back into Terraform state — is a manual operation that defeats repeatable automation.
+`mcloud-users` is named after the NetBIOS domain (`<netbios>-users`), so it
+changes if you change the domain.
 
-AWS Secrets Manager and Azure Key Vault both handle deletion gracefully and do not block re-creation. This is an OCI platform deficiency.
+| User | Groups | sudo on Linux |
+|---|---|---|
+| jsmith | mcloud-users, us, linux-admins, Domain Admins | yes |
+| edavis | mcloud-users, us | no |
+| rpatel | mcloud-users, india, linux-admins, Domain Admins | yes |
+| akumar | mcloud-users, india | no |
 
-**Current approach:** Passwords are stored as sensitive outputs in `terraform.tfstate`. The admin password is injected into client instances at apply time via `templatefile`, matching the pattern used for the Windows instance from the start. Use `./get_password.sh` to retrieve any credential directly from Terraform state.
+| Group | gidNumber |
+|---|---|
+| mcloud-users | 10001 |
+| us | 10002 |
+| india | 10003 |
+| linux-admins | 10004 |
 
----
+## What mini-AD doesn't do
+
+A single Samba DC gives up what a managed directory provides: no redundancy
+or failover, no built-in backups or patching, limited GPO support without
+replication, no AD Web Services (so many AD PowerShell cmdlets don't work),
+and security hardening that depends entirely on your own configuration.
+
+## Where the passwords live
+
+The AD passwords are generated by Terraform and kept as sensitive outputs in
+`01-directory/terraform.tfstate`; `02-servers` passes the admin password to
+both instances as user data for the domain join.
+
+OCI Vault was the first approach, with the Linux client reading its join
+password through instance principal authentication. But a destroyed vault
+stays in `PENDING_DELETION` and still counts against the tenancy limit (one
+vault by default), so every `apply` after a `destroy` fails with
+`LimitExceeded`, and the only workaround is a manual cancel-and-import.
+
+```bash
+./get_password.sh rpatel               # also: admin, jsmith, edavis, akumar, windows_local_admin
+```
+
+## Network security
+
+```
+internet ─22───▶ Linux client
+internet ─3389─▶ Windows client
+internet ─Bastion session─▶ DC :22
+```
+
+The NSGs `ad-ssh-nsg` (22) and `ad-rdp-nsg` (3389) allow `0.0.0.0/0`; every
+login still needs an AD account. The DC has no public IP, and
+`ad-subnet`'s security list only admits traffic from the VCN.
 
 ## Prerequisites
 
-- An OCI account with available Always Free resources
-- [OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) configured with a DEFAULT profile in `~/.oci/config`
-- [Terraform](https://developer.hashicorp.com/terraform/install) (latest)
-- `jq` installed in PATH
+* An OCI account with available Always Free resources
+* [Install OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm),
+  configured with a `DEFAULT` profile in `~/.oci/config`
+* [Install Terraform](https://developer.hashicorp.com/terraform/install)
+* [Install jq](https://jqlang.github.io/jq/download/)
 
----
-
-## Download this Repository
+## Deploy
 
 ```bash
 git clone https://github.com/mamonaco1973/oci-mini-ad.git
 cd oci-mini-ad
+export OCI_COMPARTMENT_ID=<compartment-ocid>   # optional; defaults to the tenancy
+./apply.sh       # 1: VCN + bastion + mini-AD  2: Linux and Windows instances
 ```
 
----
+Everything deploys to `us-ashburn-1`, in the first availability domain.
+After `apply.sh` finishes, the Linux instance needs a few minutes to join
+the domain, and the Windows instance longer, because it joins and then
+reboots. `apply.sh` ends by running `validate.sh`:
 
-## Build the Code
+```
+============================================================================
+Mini-AD - Deployment Summary
+============================================================================
 
-Run `check_env.sh` to validate your environment, then run `apply.sh` to provision the infrastructure.
+  Domain Controller (private)
+    IP       : 10.0.0.10
+    Connect  : ./connect.sh
 
-```bash
-export OCI_COMPARTMENT_ID=<your-compartment-ocid>   # optional; falls back to tenancy OCID
-./apply.sh
+  Linux Client (public)
+    IP       : 203.0.113.20
+    Connect  : ssh -i 01-directory/keys/Private_Key ubuntu@203.0.113.20
+    AD user  : ./get_password.sh rpatel  =>  ssh rpatel@203.0.113.20
+
+  Windows Client (public)
+    IP       : 203.0.113.10
+    Connect  : RDP to 203.0.113.10 as MCLOUD\Admin
+
+  Passwords  : ./get_password.sh <user>
+               users: admin jsmith edavis rpatel akumar
 ```
 
-The deploy runs in two phases:
+## Try it
 
-1. **01-directory** — VCN, subnets, bastion, and the Samba 4 DC. Waits for the DC to signal bootstrap completion before updating DHCP options.
-2. **02-servers** — Linux and Windows client instances that domain-join at first boot.
+1. `./get_password.sh rpatel`, then SSH to the Linux client as `rpatel`. Try
+   `id`, `getent group linux-admins` and `sudo -l`.
+2. RDP to the Windows client as `MCLOUD\rpatel`. **Active Directory Users and
+   Computers** is installed.
+3. `./connect.sh` opens a bastion session to the DC and drops you into a
+   shell there as `ubuntu`. `./connect.sh <private-ip>` reaches any other
+   private address the same way.
 
-Total build time is approximately 15–20 minutes end to end.
+## Changing the domain name
 
----
-
-## Build Results
-
-When the deployment completes, the following resources are created:
-
-**Networking:**
-- VCN with public subnets (vm-subnet-1, vm-subnet-2) and a private subnet (ad-subnet)
-- Internet Gateway and NAT Gateway for controlled outbound access
-- Route tables for both public and private subnets
-- Security lists for client and DC traffic
-
-**Active Directory:**
-- Ubuntu 24.04 ARM64 instance (VM.Standard.A1.Flex, always-free) running Samba 4 as a Domain Controller
-- Private subnet placement — no public IP
-- VCN DHCP options updated to point DNS at the DC after provisioning
-
-**Credentials:**
-- All AD account passwords generated randomly and stored as sensitive outputs in `terraform.tfstate`
-- Retrieved via `./get_password.sh` — no external secret store required
-
-**Bastion:**
-- OCI Bastion Service (STANDARD, free) for SSH access to the private DC
-
-**Client Instances:**
-- Ubuntu 24.04 Linux instance (VM.Standard.E4.Flex) joined to the domain
-- Windows Server 2022 instance (VM.Standard.E4.Flex) joined to the domain
-
----
-
-## Users and Groups
-
-The following sample users and groups are created automatically during DC provisioning.
-
-### Groups
-
-| Group Name                        | gidNumber |
-|-----------------------------------|-----------|
-| `{netbios}-users` (e.g. `mcloud-users`) | 10001 |
-| us                                | 10002     |
-| india                             | 10003     |
-| linux-admins                      | 10004     |
-
-### Users
-
-| Username | Full Name   | uidNumber | gidNumber | Groups                           |
-|----------|-------------|-----------|-----------|----------------------------------|
-| jsmith   | John Smith  | 10001     | 10001     | `{netbios}-users`, us, linux-admins   |
-| edavis   | Emily Davis | 10002     | 10001     | `{netbios}-users`, us                 |
-| rpatel   | Raj Patel   | 10003     | 10001     | `{netbios}-users`, india, linux-admins|
-| akumar   | Amit Kumar  | 10004     | 10001     | `{netbios}-users`, india              |
-
----
-
-## Connecting to the DC
-
-The DC has no public IP. Use `connect.sh` to create an OCI Bastion port-forwarding session and drop into a shell:
-
-```bash
-./connect.sh            # connects to the DC
-./connect.sh 10.0.0.x   # connects to any private IP
-```
-
----
-
-## Retrieving Passwords
-
-Passwords are read directly from Terraform state:
-
-```bash
-./get_password.sh admin
-./get_password.sh jsmith
-./get_password.sh edavis
-./get_password.sh rpatel
-./get_password.sh akumar
-./get_password.sh windows_local_admin
-```
-
-Output:
-```
-Username : jsmith@mcloud.mikecloud.com
-Password : <generated-password>
-```
-
----
-
-## Connecting to the Linux Instance
-
-The Linux client has a public IP. SSH directly using the generated key:
-
-```bash
-ssh -i 01-directory/keys/Private_Key -o StrictHostKeyChecking=no ubuntu@<linux_public_ip>
-```
-
-Run `./validate.sh` to print the DC IP, bastion ID, and connection hints.
-
----
-
-## Connecting to the Windows Instance
-
-Use the public IP shown in Terraform outputs. Connect via RDP with domain credentials:
-
-- **Username:** `{NETBIOS}\Admin` (e.g. `MCLOUD\Admin`) or any domain user from the table above
-- **Password:** retrieved via `./get_password.sh <user>`
-
----
-
-## Changing the Domain Name
-
-The default domain is `mcloud.mikecloud.com` / `MCLOUD`. To deploy with a different domain, uncomment and edit the four override lines near the top of `apply.sh` and `destroy.sh` before running either script:
+The default domain is `mcloud.mikecloud.com` / `MCLOUD`. To use another,
+uncomment and edit the override lines near the top of `apply.sh` and
+`destroy.sh`:
 
 ```bash
 export TF_VAR_dns_zone="lab.mikecloud.com"
@@ -192,14 +169,27 @@ export TF_VAR_netbios="LAB"
 export TF_VAR_user_base_dn="CN=Users,DC=lab,DC=mikecloud,DC=com"
 ```
 
-The primary user group, SSSD config, and RDP group membership are all derived from `netbios` at deploy time — no other files need to be edited.
+## Troubleshooting
 
----
+| Symptom | Fix |
+|---|---|
+| SSH rejects every AD password | The Linux client hasn't finished joining. SSH in as `ubuntu` with `01-directory/keys/Private_Key` and `sudo tail /root/userdata.log`. |
+| The Windows domain join failed | RDP as `windows_local_admin` (`./get_password.sh windows_local_admin`) and read `C:\ProgramData\userdata.log`. |
+| `connect.sh` hangs or the tunnel is refused | Bastion sessions report `ACTIVE` before the key is in place; the script waits, but run it again if the first attempt fails. |
+| `id <user>` finds nothing | The user needs `uidNumber`, `gidNumber` and `uid` set in AD. SSSD caches lookups; `sudo sss_cache -E` clears it. |
 
-## Clean Up
+## Teardown
 
 ```bash
-./destroy.sh
+./destroy.sh     # destroys phase 2, then phase 1, then deletes the local SSH keys
 ```
 
-Destroys 02-servers first, then 01-directory. All OCI resources are deleted immediately — no retention periods.
+## Notes
+
+- **Lab only.** SSH and RDP are open to the internet, the bastion accepts any
+  client address, jsmith and rpatel are Domain Admins, the join uses the
+  domain admin account, and the admin password is in Terraform state and both
+  instances' user data. Restrict the NSGs and use a dedicated join account
+  for anything more.
+- `windows.png` and `linux.png` in this repository are copies of the AWS
+  mini-AD screenshots, so they aren't shown here.
